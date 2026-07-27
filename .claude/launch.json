@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/User/Desktop/Projet perso/trading-assistant/web", "run", "dev"],
+      "port": 5173,
+      "url": "http://localhost:5173"
+    }
+  ]
+}

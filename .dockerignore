@@ -1,0 +1,26 @@
+# Ne pas envoyer dans le contexte de build (plus rapide, image plus propre).
+.git/
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Le frontend est rebuildé dans l'image ; on n'envoie ni node_modules ni dist.
+web/node_modules/
+web/dist/
+web/dev-dist/
+
+# Secrets et données locales : jamais dans l'image.
+.env
+.env.*
+!.env.example
+data/journal.json
+
+# Divers
+.claude/
+*.md
+tests/

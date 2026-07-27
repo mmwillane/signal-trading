@@ -1,0 +1,35 @@
+# Versions épinglées (reproductibilité + surface d'audit stable).
+# Résolues et testées sous Python 3.14 (wheels cp314).
+# Vérifiez les vulnérabilités avec :  pip-audit -r requirements.txt
+#
+# Note : feedparser tire sgmllib3k, distribué uniquement en sdist (pur
+# Python, aucune compilation). N'utilisez donc PAS --only-binary=:all:
+# sur ce fichier complet ; ou installez feedparser séparément.
+
+# --- Cœur : données, calcul ---
+yfinance==1.5.2
+pandas==3.0.5
+numpy==2.5.1
+requests==2.34.2
+
+# --- News ---
+feedparser==6.0.12
+vaderSentiment==3.3.2
+
+# --- Configuration / sécurité ---
+python-dotenv==1.2.2
+
+# --- API web (backend du frontend web/mobile) ---
+fastapi==0.140.0
+uvicorn[standard]==0.51.0
+
+# --- Connecteurs brokers (optionnels ; import paresseux) ---
+# Décommentez uniquement ceux que vous utilisez en LECTURE SEULE.
+# alpaca-py
+# ccxt            # couvre Binance + Kraken
+# oandapyV20
+# ib_insync
+
+# --- Qualité / sécurité (dev) ---
+pip-audit==2.10.1
+pytest==9.1.1

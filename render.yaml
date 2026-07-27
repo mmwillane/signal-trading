@@ -1,0 +1,23 @@
+# Blueprint Render — déploie l'app en un service web Docker (offre gratuite).
+# Sur render.com : New > Blueprint, connecte ce dépôt, Render lit ce fichier.
+#
+# Render fournit automatiquement la variable PORT ; le Dockerfile l'utilise.
+# Les variables ci-dessous configurent capital / risque / watchlist : tu peux
+# les modifier ici ou dans le tableau de bord Render.
+
+services:
+  - type: web
+    name: signal-trading
+    runtime: docker
+    plan: free
+    envVars:
+      - key: CAPITAL
+        value: "10000"
+      - key: RISK_PER_TRADE
+        value: "0.01"
+      - key: BASE_CURRENCY
+        value: "USD"
+      - key: WATCHLIST
+        value: "AAPL,MSFT,SPY,BTC-USD,ETH-USD"
+      - key: ASSET_CLASS
+        value: "stocks"
