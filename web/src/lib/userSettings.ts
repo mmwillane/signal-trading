@@ -9,9 +9,10 @@ const KEY = "signal.userSettings.v1";
 export interface UserSettings {
   capital: number | null; // null => on utilise la valeur par défaut du serveur
   risk: number | null; // fraction (0.01 = 1 %)
+  fractional: boolean; // le broker permet les actions fractionnées (petits budgets)
 }
 
-const EMPTY: UserSettings = { capital: null, risk: null };
+const EMPTY: UserSettings = { capital: null, risk: null, fractional: false };
 
 export function loadUserSettings(): UserSettings {
   try {
@@ -21,6 +22,7 @@ export function loadUserSettings(): UserSettings {
     return {
       capital: typeof v.capital === "number" && v.capital > 0 ? v.capital : null,
       risk: typeof v.risk === "number" && v.risk > 0 && v.risk <= 0.1 ? v.risk : null,
+      fractional: v.fractional === true,
     };
   } catch {
     return { ...EMPTY };

@@ -227,10 +227,11 @@ async function send<T>(path: string, method: "POST" | "PATCH" | "DELETE", body?:
 
 export const api = {
   settings: () => get<Settings>("/api/settings"),
-  dashboard: (news = true, capital?: number | null, risk?: number | null) => {
+  dashboard: (news = true, capital?: number | null, risk?: number | null, fractional = false) => {
     const p = new URLSearchParams({ news: String(news) });
     if (capital != null) p.set("capital", String(capital));
     if (risk != null) p.set("risk", String(risk));
+    if (fractional) p.set("fractional", "true");
     return get<Dashboard>(`/api/dashboard?${p.toString()}`);
   },
   instrument: (
@@ -238,11 +239,13 @@ export const api = {
     news = true,
     timeframe: "daily" | "intraday" = "daily",
     capital?: number | null,
-    risk?: number | null
+    risk?: number | null,
+    fractional = false
   ) => {
     const p = new URLSearchParams({ news: String(news), timeframe });
     if (capital != null) p.set("capital", String(capital));
     if (risk != null) p.set("risk", String(risk));
+    if (fractional) p.set("fractional", "true");
     return get<InstrumentDetail>(`/api/instrument/${encodeURIComponent(symbol)}?${p.toString()}`);
   },
   news: () => get<NewsFeed>("/api/news"),

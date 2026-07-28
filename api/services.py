@@ -142,6 +142,7 @@ def analyze_symbol(
     use_news: bool = True,
     capital: float | None = None,
     risk: float | None = None,
+    fractional: bool = False,
 ) -> dict[str, Any]:
     """Analyse un instrument pour la vue liste (dashboard)."""
     cap, rsk = _effective_risk(capital, risk)
@@ -178,20 +179,28 @@ def analyze_symbol(
     }
 
     if signal.has_setup:
-        # Crypto (paires -USD) : quantités fractionnables ; sinon entières.
-        fractional = symbol.upper().endswith("-USD")
+        # Crypto (paires -USD) toujours fractionnable ; actions selon le choix
+        # de l'utilisateur (son broker permet ou non les fractions).
+        allow_frac = fractional or symbol.upper().endswith("-USD")
         proposal = build_proposal(
             symbol, signal,
             capital=cap,
             risk_per_trade=rsk,
             sentiment_score=sentiment,
-            allow_fractional=fractional,
+            allow_fractional=allow_frac,
         )
         if proposal is not None:
             result["proposal"] = _proposal_dict(proposal)
         else:
+            # En pratique, avec un setup valide, l'échec vient du budget :
+            # 1 action entière dépasse le capital / le risque autorisé.
             result["has_setup"] = False
-            result["reasons"] = ["Setup rejeté (R/R insuffisant ou taille nulle)"]
+            result["setup_unaffordable"] = True
+            result["reasons"] = [
+                f"Budget trop faible pour 1 action entière de {symbol}. "
+                "Active « actions fractionnées » (si ton broker les permet) "
+                "ou vise un instrument moins cher / une crypto."
+            ]
 
     return result
 
@@ -217,12 +226,14 @@ def _proposal_dict(p) -> dict[str, Any]:
 
 
 def _safe_analyze(
-    symbol: str, *, use_news: bool, capital: float | None, risk: float | None
+    symbol: str, *, use_news: bool, capital: float | None, risk: float | None, fractional: bool
 ) -> dict[str, Any]:
     """Analyse un symbole en isolant toute erreur : un symbole défaillant
     ne doit jamais faire échouer l'ensemble du dashboard."""
     try:
-        return analyze_symbol(symbol, use_news=use_news, capital=capital, risk=risk)
+        return analyze_symbol(
+            symbol, use_news=use_news, capital=capital, risk=risk, fractional=fractional
+        )
     except Exception as exc:  # noqa: BLE001 - robustesse volontaire
         from src.security.safe_logging import get_logger
 
@@ -231,13 +242,18 @@ def _safe_analyze(
 
 
 def dashboard(
-    *, use_news: bool = True, capital: float | None = None, risk: float | None = None
+    *,
+    use_news: bool = True,
+    capital: float | None = None,
+    risk: float | None = None,
+    fractional: bool = False,
 ) -> dict[str, Any]:
     """Analyse toute la watchlist, setups les plus confiants d'abord."""
     s = settings()
     cap, rsk = _effective_risk(capital, risk)
     items = [
-        _safe_analyze(sym, use_news=use_news, capital=cap, risk=rsk) for sym in s.watchlist
+        _safe_analyze(sym, use_news=use_news, capital=cap, risk=rsk, fractional=fractional)
+        for sym in s.watchlist
     ]
     # Tri : setups d'abord, puis par score de confiance décroissant.
     items.sort(key=lambda i: (i.get("has_setup", False), i.get("confidence", 0)), reverse=True)
@@ -273,6 +289,7 @@ def instrument_detail(
     timeframe: str = "daily",
     capital: float | None = None,
     risk: float | None = None,
+    fractional: bool = False,
 ) -> dict[str, Any]:
     """Détail complet d'un instrument : chandelier + indicateurs + proposition.
 
@@ -301,7 +318,9 @@ def instrument_detail(
 
     mtf = _mtf_bias(symbol)
     signal = evaluate_row(last, sentiment, mtf)
-    base = analyze_symbol(symbol, use_news=use_news, capital=capital, risk=risk)
+    base = analyze_symbol(
+        symbol, use_news=use_news, capital=capital, risk=risk, fractional=fractional
+    )
     price, change_pct, is_live = _live_price(symbol, df)
 
     return {
