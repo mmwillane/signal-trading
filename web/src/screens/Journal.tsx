@@ -70,7 +70,7 @@ export function Journal() {
 
       {e && e.n_closed > 0 && (
         <Reveal delay={90}>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             <Stat label="Win rate" value={pct(e.win_rate * 100, false)} tone={e.win_rate >= 0.5 ? "up" : undefined} />
             <Stat label="Profit factor" value={e.profit_factor === null ? "∞" : num(e.profit_factor, 2)} tone={(e.profit_factor ?? 99) >= 1 ? "up" : "down"} />
             <Stat label="Gain moyen" value={signedR(e.avg_win_r)} tone="up" />
@@ -85,7 +85,9 @@ export function Journal() {
         <Reveal delay={110}>
           <div className="space-y-3">
             <Eyebrow>Positions ouvertes ({open.length})</Eyebrow>
-            {open.map((t) => <OpenRow key={t.id} t={t} />)}
+            <div className="grid gap-3 md:grid-cols-2">
+              {open.map((t) => <OpenRow key={t.id} t={t} />)}
+            </div>
           </div>
         </Reveal>
       )}
@@ -94,7 +96,9 @@ export function Journal() {
         <Reveal delay={130}>
           <div className="space-y-3">
             <Eyebrow>Historique ({closed.length})</Eyebrow>
-            {closed.map((t) => <ClosedRow key={t.id} t={t} />)}
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {closed.map((t) => <ClosedRow key={t.id} t={t} />)}
+            </div>
           </div>
         </Reveal>
       )}

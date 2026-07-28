@@ -44,6 +44,7 @@ export function News() {
       {q.data && (
         <div className="space-y-3">
           <Eyebrow>{q.data.count} articles</Eyebrow>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {q.data.items.map((n, i) => (
             <Reveal key={i} delay={Math.min(i * 40, 300)}>
               <a href={n.url ?? "#"} target="_blank" rel="noreferrer" className="block">
@@ -68,6 +69,7 @@ export function News() {
               </a>
             </Reveal>
           ))}
+          </div>
         </div>
       )}
     </div>

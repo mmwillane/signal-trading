@@ -70,7 +70,7 @@ export function Dashboard() {
         </div>
 
         {dash.isLoading && (
-          <div className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
             <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
@@ -80,7 +80,7 @@ export function Dashboard() {
         {dash.isError && <ErrorState message={(dash.error as Error).message} />}
 
         {dash.data && (
-          <div className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
             {dash.data.items.map((item, i) => (
               <Reveal key={item.symbol} delay={i * 60}>
                 <InstrumentRow item={item} currency={currency} />

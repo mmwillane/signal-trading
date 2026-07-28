@@ -60,7 +60,7 @@ export function Backtest() {
       {q.data && q.data.status === "ok" && (
         <>
           <Reveal delay={80}>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
               <Stat label="Trades" value={String(q.data.stats.n_trades)} />
               <Stat label="Win rate" value={pct(q.data.stats.win_rate * 100, false)} tone={q.data.stats.win_rate >= 0.5 ? "up" : undefined} />
               <Stat
@@ -144,7 +144,7 @@ function EquityCurve({ data }: { data: { i: number; r: number }[] }) {
   const color = last >= 0 ? "#34d399" : "#fb5a72";
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" preserveAspectRatio="none" style={{ height: 120 }}>
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[120px] lg:h-[240px]" preserveAspectRatio="none">
       <defs>
         <linearGradient id="eq" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.25" />

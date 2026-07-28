@@ -14,12 +14,12 @@ export function PriceChart({
   candles,
   sma20,
   sma50,
-  height = 300,
+  className = "w-full h-[300px] sm:h-[360px] lg:h-[460px] xl:h-[540px]",
 }: {
   candles: Candle[];
   sma20: LinePoint[];
   sma50: LinePoint[];
-  height?: number;
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -45,7 +45,6 @@ export function PriceChart({
         vertLine: { color: "rgba(255,255,255,0.2)", labelBackgroundColor: "#101218" },
         horzLine: { color: "rgba(255,255,255,0.2)", labelBackgroundColor: "#101218" },
       },
-      height,
       autoSize: true,
     });
     chartRef.current = chart;
@@ -83,7 +82,7 @@ export function PriceChart({
       chart.remove();
       chartRef.current = null;
     };
-  }, [candles, sma20, sma50, height]);
+  }, [candles, sma20, sma50]);
 
-  return <div ref={ref} style={{ width: "100%", height }} />;
+  return <div ref={ref} className={className} />;
 }

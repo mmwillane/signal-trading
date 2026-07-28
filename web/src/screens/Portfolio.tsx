@@ -59,7 +59,7 @@ export function Portfolio() {
           <Reveal delay={120}>
             <div className="space-y-3">
               <Eyebrow>Connecteurs disponibles</Eyebrow>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {[...q.data.available_brokers.map((b) => ({ b, on: true })), ...q.data.unavailable_brokers.map((b) => ({ b, on: false }))].map(({ b, on }) => (
                   <Bezel key={b} className="p-3.5 flex items-center gap-3">
                     <Plugs size={18} weight="light" color={on ? "#34d399" : "#6b7280"} />

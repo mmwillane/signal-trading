@@ -77,96 +77,104 @@ export function Instrument() {
             </div>
           </Reveal>
 
-          {/* Graphique + sélecteur d'unité de temps */}
-          <Reveal delay={60}>
-            <Bezel className="p-3">
-              <div className="flex items-center gap-2 px-1 pb-2 pt-1">
-                <div className="flex gap-1 rounded-full p-1 hairline" style={{ backgroundColor: "rgba(255,255,255,0.02)" }}>
-                  <TfChip active={tf === "daily"} onClick={() => setTf("daily")}>6 mois</TfChip>
-                  <TfChip active={tf === "intraday"} onClick={() => setTf("intraday")}>Intraday</TfChip>
-                </div>
-                <div className="flex items-center gap-3 ml-auto text-[11px]" style={{ color: "var(--color-faint)" }}>
-                  <Legend color="#8b7cf6" label={tf === "daily" ? "SMA 20" : "EMA 20"} />
-                  <Legend color="#f5c451" label={tf === "daily" ? "SMA 50" : "EMA 50"} />
-                </div>
-              </div>
-              {q.data.candles.length > 0 ? (
-                <PriceChart candles={q.data.candles} sma20={q.data.sma20} sma50={q.data.sma50} />
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-sm" style={{ color: "var(--color-faint)" }}>
-                  Données intraday indisponibles pour cet instrument.
-                </div>
-              )}
-            </Bezel>
-          </Reveal>
+          {/* Corps : 2 colonnes sur ordinateur, empilé sur mobile */}
+          <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+            {/* Colonne principale : graphique, indicateurs, tendance, actus */}
+            <div className="lg:col-span-2 space-y-6">
+              <Reveal delay={60}>
+                <Bezel className="p-3">
+                  <div className="flex items-center gap-2 px-1 pb-2 pt-1">
+                    <div className="flex gap-1 rounded-full p-1 hairline" style={{ backgroundColor: "rgba(255,255,255,0.02)" }}>
+                      <TfChip active={tf === "daily"} onClick={() => setTf("daily")}>6 mois</TfChip>
+                      <TfChip active={tf === "intraday"} onClick={() => setTf("intraday")}>Intraday</TfChip>
+                    </div>
+                    <div className="flex items-center gap-3 ml-auto text-[11px]" style={{ color: "var(--color-faint)" }}>
+                      <Legend color="#8b7cf6" label={tf === "daily" ? "SMA 20" : "EMA 20"} />
+                      <Legend color="#f5c451" label={tf === "daily" ? "SMA 50" : "EMA 50"} />
+                    </div>
+                  </div>
+                  {q.data.candles.length > 0 ? (
+                    <PriceChart candles={q.data.candles} sma20={q.data.sma20} sma50={q.data.sma50} />
+                  ) : (
+                    <div className="h-[300px] sm:h-[360px] lg:h-[460px] flex items-center justify-center text-sm" style={{ color: "var(--color-faint)" }}>
+                      Données intraday indisponibles pour cet instrument.
+                    </div>
+                  )}
+                </Bezel>
+              </Reveal>
 
-          {/* Indicateurs */}
-          <Reveal delay={100}>
-            <div className="grid grid-cols-4 gap-2">
-              <Indicator label="RSI" value={num(q.data.indicators.rsi, 0)} tone={q.data.indicators.rsi >= 70 ? "down" : q.data.indicators.rsi <= 30 ? "up" : undefined} />
-              <Indicator label="MACD" value={num(q.data.indicators.macd_hist, 2)} tone={q.data.indicators.macd_hist >= 0 ? "up" : "down"} />
-              <Indicator label="ADX" value={num(q.data.indicators.adx, 0)} tone={q.data.indicators.adx >= 20 ? "up" : "down"} />
-              <Indicator label="Sentiment" value={sentimentLabel(q.data.sentiment).text} />
+              <Reveal delay={100}>
+                <div className="grid grid-cols-4 gap-2">
+                  <Indicator label="RSI" value={num(q.data.indicators.rsi, 0)} tone={q.data.indicators.rsi >= 70 ? "down" : q.data.indicators.rsi <= 30 ? "up" : undefined} />
+                  <Indicator label="MACD" value={num(q.data.indicators.macd_hist, 2)} tone={q.data.indicators.macd_hist >= 0 ? "up" : "down"} />
+                  <Indicator label="ADX" value={num(q.data.indicators.adx, 0)} tone={q.data.indicators.adx >= 20 ? "up" : "down"} />
+                  <Indicator label="Sentiment" value={sentimentLabel(q.data.sentiment).text} />
+                </div>
+              </Reveal>
+
+              <Reveal delay={120}>
+                <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                  <span className="rounded-full px-3 py-1 hairline" style={{ color: q.data.indicators.adx >= 20 ? "#5be0ae" : "var(--color-faint)" }}>
+                    {q.data.indicators.adx >= 20 ? "Tendance établie" : "Marché sans tendance"} · ADX {num(q.data.indicators.adx, 0)}
+                  </span>
+                  {q.data.mtf && (
+                    <span
+                      className="rounded-full px-3 py-1 hairline"
+                      style={{ color: q.data.mtf === "aligné" ? "#5be0ae" : q.data.mtf === "opposé" ? "#ff8497" : "var(--color-faint)" }}
+                    >
+                      {MTF_LABEL[q.data.mtf] ?? q.data.mtf}
+                    </span>
+                  )}
+                </div>
+              </Reveal>
+
+              {q.data.news.length > 0 && (
+                <Reveal delay={180}>
+                  <div className="space-y-3">
+                    <Eyebrow>Actualités liées</Eyebrow>
+                    <div className="grid gap-3 xl:grid-cols-2">
+                      {q.data.news.map((n, i) => (
+                        <a key={i} href={n.url ?? "#"} target="_blank" rel="noreferrer" className="block">
+                          <Bezel className="p-4 press">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--color-faint)" }}>{n.source}</div>
+                                <div className="text-sm leading-snug">{n.title}</div>
+                              </div>
+                              <ArrowUpRight size={16} weight="light" color="#6b7280" className="shrink-0 mt-0.5" />
+                            </div>
+                          </Bezel>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </Reveal>
+              )}
             </div>
-          </Reveal>
 
-          {/* Bandeau tendance multi-temporel */}
-          <Reveal delay={120}>
-            <div className="flex items-center gap-2 flex-wrap text-[11px]">
-              <span className="rounded-full px-3 py-1 hairline" style={{ color: q.data.indicators.adx >= 20 ? "#5be0ae" : "var(--color-faint)" }}>
-                {q.data.indicators.adx >= 20 ? "Tendance établie" : "Marché sans tendance"} · ADX {num(q.data.indicators.adx, 0)}
-              </span>
-              {q.data.mtf && (
-                <span
-                  className="rounded-full px-3 py-1 hairline"
-                  style={{ color: q.data.mtf === "aligné" ? "#5be0ae" : q.data.mtf === "opposé" ? "#ff8497" : "var(--color-faint)" }}
-                >
-                  {MTF_LABEL[q.data.mtf] ?? q.data.mtf}
-                </span>
-              )}
-            </div>
-          </Reveal>
-
-          {/* Proposition ou message */}
-          <Reveal delay={140}>
-            <Bezel className="p-5">
-              {q.data.proposal ? (
-                <ProposalCard p={q.data.proposal} currency={currency} />
-              ) : (
-                <div className="text-center py-6 space-y-2">
-                  <Eyebrow>Analyse</Eyebrow>
-                  <p className="text-sm" style={{ color: "var(--color-muted)" }}>
-                    Pas de setup conforme actuellement.
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--color-faint)" }}>
-                    {q.data.reasons[0]} — ne rien faire est une décision valable.
-                  </p>
-                </div>
-              )}
-            </Bezel>
-          </Reveal>
-
-          {/* News liées */}
-          {q.data.news.length > 0 && (
-            <Reveal delay={180}>
-              <div className="space-y-3">
-                <Eyebrow>Actualités liées</Eyebrow>
-                {q.data.news.map((n, i) => (
-                  <a key={i} href={n.url ?? "#"} target="_blank" rel="noreferrer" className="block">
-                    <Bezel className="p-4 press">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--color-faint)" }}>{n.source}</div>
-                          <div className="text-sm leading-snug">{n.title}</div>
-                        </div>
-                        <ArrowUpRight size={16} weight="light" color="#6b7280" className="shrink-0 mt-0.5" />
+            {/* Colonne latérale : proposition (collante sur desktop) */}
+            <div className="lg:col-span-1">
+              <div className="lg:sticky lg:top-10">
+                <Reveal delay={140}>
+                  <Bezel className="p-5">
+                    {q.data.proposal ? (
+                      <ProposalCard p={q.data.proposal} currency={currency} />
+                    ) : (
+                      <div className="text-center py-6 space-y-2">
+                        <Eyebrow>Analyse</Eyebrow>
+                        <p className="text-sm" style={{ color: "var(--color-muted)" }}>
+                          Pas de setup conforme actuellement.
+                        </p>
+                        <p className="text-xs" style={{ color: "var(--color-faint)" }}>
+                          {q.data.reasons[0]} — ne rien faire est une décision valable.
+                        </p>
                       </div>
-                    </Bezel>
-                  </a>
-                ))}
+                    )}
+                  </Bezel>
+                </Reveal>
               </div>
-            </Reveal>
-          )}
+            </div>
+          </div>
         </>
       )}
     </div>
