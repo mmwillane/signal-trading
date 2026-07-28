@@ -46,6 +46,7 @@ export interface Quote {
 export interface Dashboard {
   generated_for: string;
   capital: number;
+  risk_per_trade?: number;
   risk_amount: number;
   n_setups: number;
   items: DashboardItem[];
@@ -226,11 +227,24 @@ async function send<T>(path: string, method: "POST" | "PATCH" | "DELETE", body?:
 
 export const api = {
   settings: () => get<Settings>("/api/settings"),
-  dashboard: (news = true) => get<Dashboard>(`/api/dashboard?news=${news}`),
-  instrument: (symbol: string, news = true, timeframe: "daily" | "intraday" = "daily") =>
-    get<InstrumentDetail>(
-      `/api/instrument/${encodeURIComponent(symbol)}?news=${news}&timeframe=${timeframe}`
-    ),
+  dashboard: (news = true, capital?: number | null, risk?: number | null) => {
+    const p = new URLSearchParams({ news: String(news) });
+    if (capital != null) p.set("capital", String(capital));
+    if (risk != null) p.set("risk", String(risk));
+    return get<Dashboard>(`/api/dashboard?${p.toString()}`);
+  },
+  instrument: (
+    symbol: string,
+    news = true,
+    timeframe: "daily" | "intraday" = "daily",
+    capital?: number | null,
+    risk?: number | null
+  ) => {
+    const p = new URLSearchParams({ news: String(news), timeframe });
+    if (capital != null) p.set("capital", String(capital));
+    if (risk != null) p.set("risk", String(risk));
+    return get<InstrumentDetail>(`/api/instrument/${encodeURIComponent(symbol)}?${p.toString()}`);
+  },
   news: () => get<NewsFeed>("/api/news"),
   backtest: (symbol: string, period = "2y", trailing = true) =>
     get<BacktestResult>(

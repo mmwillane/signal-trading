@@ -9,6 +9,7 @@ import { Reveal } from "../components/Reveal";
 import { PriceChart } from "../components/PriceChart";
 import { ProposalCard } from "../components/ProposalCard";
 import { Skeleton, ErrorState } from "../components/Skeleton";
+import { useUserSettings } from "../lib/userSettings";
 
 const MTF_LABEL: Record<string, string> = {
   "aligné": "intraday aligné",
@@ -20,10 +21,11 @@ export function Instrument() {
   const { symbol = "" } = useParams();
   const navigate = useNavigate();
   const [tf, setTf] = useState<"daily" | "intraday">("daily");
+  const user = useUserSettings();
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => api.settings() });
   const q = useQuery({
-    queryKey: ["instrument", symbol, tf],
-    queryFn: () => api.instrument(symbol, true, tf),
+    queryKey: ["instrument", symbol, tf, user.capital, user.risk],
+    queryFn: () => api.instrument(symbol, true, tf, user.capital, user.risk),
     refetchInterval: 30_000,
   });
   const currency = settings.data?.base_currency ?? "USD";

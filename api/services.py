@@ -122,9 +122,29 @@ def _spark(df: pd.DataFrame, n: int = 40) -> list[float]:
 
 
 # --------------------------------------------------------------------------
-def analyze_symbol(symbol: str, *, use_news: bool = True) -> dict[str, Any]:
-    """Analyse un instrument pour la vue liste (dashboard)."""
+def _effective_risk(capital: float | None, risk: float | None) -> tuple[float, float]:
+    """Résout le capital et le risque à utiliser : valeurs fournies par
+    l'utilisateur (validées) sinon valeurs par défaut du serveur (.env).
+
+    On ne fait JAMAIS confiance au client : capital > 0 et risque dans ]0, 0.1].
+    """
     s = settings()
+    cap = capital if (capital is not None and capital > 0) else s.capital
+    rsk = risk if (risk is not None and 0 < risk <= 0.1) else s.risk_per_trade
+    # Borne dure de sécurité même si des valeurs aberrantes passaient.
+    cap = min(max(cap, 1.0), 1_000_000_000.0)
+    return cap, rsk
+
+
+def analyze_symbol(
+    symbol: str,
+    *,
+    use_news: bool = True,
+    capital: float | None = None,
+    risk: float | None = None,
+) -> dict[str, Any]:
+    """Analyse un instrument pour la vue liste (dashboard)."""
+    cap, rsk = _effective_risk(capital, risk)
     df = _history_cached(symbol)
     if df is None or len(df) < tr.TREND_FILTER_WINDOW:
         return {
@@ -158,12 +178,14 @@ def analyze_symbol(symbol: str, *, use_news: bool = True) -> dict[str, Any]:
     }
 
     if signal.has_setup:
+        # Crypto (paires -USD) : quantités fractionnables ; sinon entières.
+        fractional = symbol.upper().endswith("-USD")
         proposal = build_proposal(
             symbol, signal,
-            capital=s.capital,
-            risk_per_trade=s.risk_per_trade,
+            capital=cap,
+            risk_per_trade=rsk,
             sentiment_score=sentiment,
-            allow_fractional=s.asset_class == "crypto",
+            allow_fractional=fractional,
         )
         if proposal is not None:
             result["proposal"] = _proposal_dict(proposal)
@@ -194,11 +216,13 @@ def _proposal_dict(p) -> dict[str, Any]:
     }
 
 
-def _safe_analyze(symbol: str, *, use_news: bool) -> dict[str, Any]:
+def _safe_analyze(
+    symbol: str, *, use_news: bool, capital: float | None, risk: float | None
+) -> dict[str, Any]:
     """Analyse un symbole en isolant toute erreur : un symbole défaillant
     ne doit jamais faire échouer l'ensemble du dashboard."""
     try:
-        return analyze_symbol(symbol, use_news=use_news)
+        return analyze_symbol(symbol, use_news=use_news, capital=capital, risk=risk)
     except Exception as exc:  # noqa: BLE001 - robustesse volontaire
         from src.security.safe_logging import get_logger
 
@@ -206,17 +230,23 @@ def _safe_analyze(symbol: str, *, use_news: bool) -> dict[str, Any]:
         return {"symbol": symbol, "status": "error", "message": "Analyse indisponible"}
 
 
-def dashboard(*, use_news: bool = True) -> dict[str, Any]:
+def dashboard(
+    *, use_news: bool = True, capital: float | None = None, risk: float | None = None
+) -> dict[str, Any]:
     """Analyse toute la watchlist, setups les plus confiants d'abord."""
     s = settings()
-    items = [_safe_analyze(sym, use_news=use_news) for sym in s.watchlist]
+    cap, rsk = _effective_risk(capital, risk)
+    items = [
+        _safe_analyze(sym, use_news=use_news, capital=cap, risk=rsk) for sym in s.watchlist
+    ]
     # Tri : setups d'abord, puis par score de confiance décroissant.
     items.sort(key=lambda i: (i.get("has_setup", False), i.get("confidence", 0)), reverse=True)
     setups = [i for i in items if i.get("has_setup")]
     return {
         "generated_for": s.base_currency,
-        "capital": s.capital,
-        "risk_amount": s.risk_amount(),
+        "capital": cap,
+        "risk_per_trade": rsk,
+        "risk_amount": round(cap * rsk, 2),
         "n_setups": len(setups),
         "items": items,
     }
@@ -236,7 +266,14 @@ def quotes(symbols: list[str]) -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------
-def instrument_detail(symbol: str, *, use_news: bool = True, timeframe: str = "daily") -> dict[str, Any]:
+def instrument_detail(
+    symbol: str,
+    *,
+    use_news: bool = True,
+    timeframe: str = "daily",
+    capital: float | None = None,
+    risk: float | None = None,
+) -> dict[str, Any]:
     """Détail complet d'un instrument : chandelier + indicateurs + proposition.
 
     Le graphique peut être en `daily` (6 mois) ou `intraday` (bougies 60 min),
@@ -264,7 +301,7 @@ def instrument_detail(symbol: str, *, use_news: bool = True, timeframe: str = "d
 
     mtf = _mtf_bias(symbol)
     signal = evaluate_row(last, sentiment, mtf)
-    base = analyze_symbol(symbol, use_news=use_news)
+    base = analyze_symbol(symbol, use_news=use_news, capital=capital, risk=risk)
     price, change_pct, is_live = _live_price(symbol, df)
 
     return {

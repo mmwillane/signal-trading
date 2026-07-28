@@ -1,23 +1,34 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { CaretRight, Sparkle, ShieldCheck } from "@phosphor-icons/react";
+import { CaretRight, Sparkle, ShieldCheck, PencilSimple } from "@phosphor-icons/react";
 import { api, type DashboardItem } from "../api/client";
 import { money, pct, changeTone, num } from "../lib/format";
 import { Reveal } from "../components/Reveal";
 import { Bezel, Pill, Eyebrow, ConfidenceRing, LiveBadge } from "../components/ui";
 import { Sparkline } from "../components/Sparkline";
 import { CardSkeleton, ErrorState } from "../components/Skeleton";
+import { SettingsSheet } from "../components/SettingsSheet";
+import { useUserSettings } from "../lib/userSettings";
 
 export function Dashboard() {
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => api.settings() });
+  const user = useUserSettings();
+  const [editing, setEditing] = useState(false);
+
   const dash = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: () => api.dashboard(true),
+    queryKey: ["dashboard", user.capital, user.risk],
+    queryFn: () => api.dashboard(true, user.capital, user.risk),
     refetchInterval: 30_000,           // rafraîchissement auto ~30 s (live-ish)
   });
 
   const currency = settings.data?.base_currency ?? "USD";
   const anyLive = dash.data?.items.some((i) => i.is_live) ?? false;
+
+  // Valeurs effectives affichées (réponse serveur = déjà l'override utilisateur).
+  const capital = dash.data?.capital ?? user.capital ?? settings.data?.capital ?? null;
+  const riskFrac = dash.data?.risk_per_trade ?? user.risk ?? settings.data?.risk_per_trade ?? null;
+  const riskAmount = dash.data?.risk_amount ?? (capital && riskFrac ? capital * riskFrac : null);
 
   return (
     <div className="space-y-8">
@@ -38,24 +49,38 @@ export function Dashboard() {
         </div>
       </Reveal>
 
-      {/* Bandeau capital / risque / setups */}
+      {/* Bandeau capital / risque / setups — cliquable pour régler */}
       <Reveal delay={80}>
         <Bezel className="p-1.5">
-          <div className="grid grid-cols-3 divide-x" style={{ borderColor: "var(--color-line)" }}>
-            <Metric label="Capital" value={settings.data ? money(settings.data.capital, currency) : "—"} />
+          <div className="relative grid grid-cols-3 divide-x" style={{ borderColor: "var(--color-line)" }}>
+            <button
+              onClick={() => setEditing(true)}
+              className="press absolute -top-0.5 right-1.5 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 mt-1.5"
+              style={{ backgroundColor: "rgba(52,211,153,0.12)", color: "#5be0ae" }}
+              aria-label="Régler capital et risque"
+            >
+              <PencilSimple size={11} weight="bold" />
+              <span className="text-[10px] font-semibold">Régler</span>
+            </button>
+            <Metric label="Capital" value={capital != null ? money(capital, currency) : "—"} />
             <Metric
               label="Risque / trade"
-              value={settings.data ? `${num(settings.data.risk_per_trade * 100, 0)}%` : "—"}
-              sub={settings.data ? money(settings.data.risk_amount, currency) : ""}
+              value={riskFrac != null ? `${num(riskFrac * 100, 0)}%` : "—"}
+              sub={riskAmount != null ? money(riskAmount, currency) : ""}
             />
-            <Metric
-              label="Setups"
-              value={dash.data ? String(dash.data.n_setups) : "—"}
-              accent
-            />
+            <Metric label="Setups" value={dash.data ? String(dash.data.n_setups) : "—"} accent />
           </div>
         </Bezel>
       </Reveal>
+
+      {editing && capital != null && riskFrac != null && (
+        <SettingsSheet
+          currentCapital={capital}
+          currentRiskPct={Math.round(riskFrac * 100 * 100) / 100}
+          currency={currency}
+          onClose={() => setEditing(false)}
+        />
+      )}
 
       {/* Liste watchlist */}
       <div className="space-y-3">
