@@ -18,6 +18,6 @@ services:
       - key: BASE_CURRENCY
         value: "USD"
       - key: WATCHLIST
-        value: "AAPL,MSFT,NVDA,GOOGL,AMZN,TSLA,META,SPY,^GSPC,^NDX,GC=F,BTC-USD,ETH-USD,XRP-USD"
+        value: "AAPL,MSFT,NVDA,GOOGL,AMZN,TSLA,META,SPY,^GSPC,^NDX,GC=F,EURUSD=X,GBPUSD=X,BTC-USD,ETH-USD,XRP-USD,SOL-USD,BNB-USD"
       - key: ASSET_CLASS
         value: "stocks"
