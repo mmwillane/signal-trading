@@ -60,6 +60,23 @@ def test_atr_positive():
     assert (atr > 0).all()
 
 
+def test_adx_robust_on_degenerate_data():
+    """Un prix plat (True Range nul, DI dégénérés) ne doit pas planter l'ADX
+    (régression : 'No numeric types to aggregate' observé sur certains titres)."""
+    n = 60
+    idx = pd.date_range("2022-01-01", periods=n, freq="D")
+    flat = pd.DataFrame(
+        {"Open": 100.0, "High": 100.0, "Low": 100.0, "Close": 100.0, "Volume": 1000.0},
+        index=idx,
+    )
+    out = ind.adx(flat, 14)
+    assert list(out.columns) == ["adx", "plus_di", "minus_di"]
+    assert out["adx"].notna().all()
+    # compute_features doit aussi survivre à ce cas.
+    feat = compute_features(flat)
+    assert "adx" in feat.columns and feat["adx"].notna().all()
+
+
 def test_features_have_all_indicators():
     feat = compute_features(_uptrend_df())
     for col in ("sma_fast", "sma_slow", "sma_trend", "rsi", "macd_hist", "atr"):

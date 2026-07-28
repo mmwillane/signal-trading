@@ -194,10 +194,22 @@ def _proposal_dict(p) -> dict[str, Any]:
     }
 
 
+def _safe_analyze(symbol: str, *, use_news: bool) -> dict[str, Any]:
+    """Analyse un symbole en isolant toute erreur : un symbole défaillant
+    ne doit jamais faire échouer l'ensemble du dashboard."""
+    try:
+        return analyze_symbol(symbol, use_news=use_news)
+    except Exception as exc:  # noqa: BLE001 - robustesse volontaire
+        from src.security.safe_logging import get_logger
+
+        get_logger("api").warning("Analyse échouée pour %s : %s", symbol, type(exc).__name__)
+        return {"symbol": symbol, "status": "error", "message": "Analyse indisponible"}
+
+
 def dashboard(*, use_news: bool = True) -> dict[str, Any]:
     """Analyse toute la watchlist, setups les plus confiants d'abord."""
     s = settings()
-    items = [analyze_symbol(sym, use_news=use_news) for sym in s.watchlist]
+    items = [_safe_analyze(sym, use_news=use_news) for sym in s.watchlist]
     # Tri : setups d'abord, puis par score de confiance décroissant.
     items.sort(key=lambda i: (i.get("has_setup", False), i.get("confidence", 0)), reverse=True)
     setups = [i for i in items if i.get("has_setup")]

@@ -9,6 +9,7 @@ Choix expliqué :
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 
@@ -30,7 +31,8 @@ def rsi(close: pd.Series, window: int = 14) -> pd.Series:
     # Lissage de Wilder = EMA avec alpha = 1/window.
     avg_gain = gain.ewm(alpha=1 / window, adjust=False).mean()
     avg_loss = loss.ewm(alpha=1 / window, adjust=False).mean()
-    rs = avg_gain / avg_loss.replace(0.0, pd.NA)
+    # np.nan (et non pd.NA) : conserve le dtype float, ewm/arithmétique OK.
+    rs = avg_gain / avg_loss.replace(0.0, np.nan)
     return (100 - 100 / (1 + rs)).fillna(100.0)
 
 
@@ -94,16 +96,26 @@ def adx(df: pd.DataFrame, window: int = 14) -> pd.DataFrame:
     plus_dm = ((up_move > down_move) & (up_move > 0)) * up_move.clip(lower=0)
     minus_dm = ((down_move > up_move) & (down_move > 0)) * down_move.clip(lower=0)
 
+    # Robustesse : on remplace les 0 par np.nan (dtype float conservé, contrairement
+    # à pd.NA qui bascule en object et casse ewm), et on force float64.
     atr_ = _true_range(df).ewm(alpha=1 / window, adjust=False).mean()
-    plus_di = 100 * plus_dm.ewm(alpha=1 / window, adjust=False).mean() / atr_.replace(0, pd.NA)
-    minus_di = 100 * minus_dm.ewm(alpha=1 / window, adjust=False).mean() / atr_.replace(0, pd.NA)
+    atr_safe = atr_.replace(0, np.nan)
+    plus_di = 100 * plus_dm.ewm(alpha=1 / window, adjust=False).mean() / atr_safe
+    minus_di = 100 * minus_dm.ewm(alpha=1 / window, adjust=False).mean() / atr_safe
 
-    di_sum = (plus_di + minus_di).replace(0, pd.NA)
-    dx = 100 * (plus_di - minus_di).abs() / di_sum
+    di_sum = (plus_di + minus_di).replace(0, np.nan)
+    dx = (100 * (plus_di - minus_di).abs() / di_sum)
+    # Certaines séries (données dégénérées d'un symbole) donnent un dx tout-NaN :
+    # on garantit un float64 sans NaN avant l'EWM pour ne jamais planter.
+    dx = pd.to_numeric(dx, errors="coerce").astype("float64").fillna(0.0)
     adx_line = dx.ewm(alpha=1 / window, adjust=False).mean()
 
     return pd.DataFrame(
-        {"adx": adx_line.fillna(0.0), "plus_di": plus_di.fillna(0.0), "minus_di": minus_di.fillna(0.0)}
+        {
+            "adx": adx_line.fillna(0.0).astype("float64"),
+            "plus_di": pd.to_numeric(plus_di, errors="coerce").fillna(0.0),
+            "minus_di": pd.to_numeric(minus_di, errors="coerce").fillna(0.0),
+        }
     )
 
 
