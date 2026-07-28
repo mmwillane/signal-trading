@@ -9,6 +9,18 @@ import "./index.css";
 
 import App from "./App";
 
+// Mise à jour automatique de la PWA : dès qu'un nouveau service worker prend
+// le contrôle (après un redéploiement), on recharge une fois pour servir la
+// dernière version — sans que l'utilisateur ait à vider le cache lui-même.
+if ("serviceWorker" in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
