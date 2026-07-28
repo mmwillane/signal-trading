@@ -24,8 +24,8 @@ export function Instrument() {
   const user = useUserSettings();
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => api.settings() });
   const q = useQuery({
-    queryKey: ["instrument", symbol, tf, user.capital, user.risk, user.fractional],
-    queryFn: () => api.instrument(symbol, true, tf, user.capital, user.risk, user.fractional),
+    queryKey: ["instrument", symbol, tf, user.capital, user.risk, user.fractional, user.moreSignals],
+    queryFn: () => api.instrument(symbol, true, tf, user.capital, user.risk, user.fractional, user.moreSignals),
     refetchInterval: 30_000,
   });
   const currency = settings.data?.base_currency ?? "USD";

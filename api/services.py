@@ -143,6 +143,7 @@ def analyze_symbol(
     capital: float | None = None,
     risk: float | None = None,
     fractional: bool = False,
+    more_signals: bool = False,
 ) -> dict[str, Any]:
     """Analyse un instrument pour la vue liste (dashboard)."""
     cap, rsk = _effective_risk(capital, risk)
@@ -159,7 +160,7 @@ def analyze_symbol(
         sentiment = score_news(filter_for_symbol(_news_cached(), symbol)).score
 
     mtf = _mtf_bias(symbol)
-    signal = evaluate_latest(df, sentiment, mtf)
+    signal = evaluate_latest(df, sentiment, mtf, loose=more_signals)
     price, change_pct, is_live = _live_price(symbol, df)
 
     result: dict[str, Any] = {
@@ -226,13 +227,15 @@ def _proposal_dict(p) -> dict[str, Any]:
 
 
 def _safe_analyze(
-    symbol: str, *, use_news: bool, capital: float | None, risk: float | None, fractional: bool
+    symbol: str, *, use_news: bool, capital: float | None, risk: float | None,
+    fractional: bool, more_signals: bool,
 ) -> dict[str, Any]:
     """Analyse un symbole en isolant toute erreur : un symbole défaillant
     ne doit jamais faire échouer l'ensemble du dashboard."""
     try:
         return analyze_symbol(
-            symbol, use_news=use_news, capital=capital, risk=risk, fractional=fractional
+            symbol, use_news=use_news, capital=capital, risk=risk,
+            fractional=fractional, more_signals=more_signals,
         )
     except Exception as exc:  # noqa: BLE001 - robustesse volontaire
         from src.security.safe_logging import get_logger
@@ -247,12 +250,16 @@ def dashboard(
     capital: float | None = None,
     risk: float | None = None,
     fractional: bool = False,
+    more_signals: bool = False,
 ) -> dict[str, Any]:
     """Analyse toute la watchlist, setups les plus confiants d'abord."""
     s = settings()
     cap, rsk = _effective_risk(capital, risk)
     items = [
-        _safe_analyze(sym, use_news=use_news, capital=cap, risk=rsk, fractional=fractional)
+        _safe_analyze(
+            sym, use_news=use_news, capital=cap, risk=rsk,
+            fractional=fractional, more_signals=more_signals,
+        )
         for sym in s.watchlist
     ]
     # Tri : setups d'abord, puis par score de confiance décroissant.
@@ -290,6 +297,7 @@ def instrument_detail(
     capital: float | None = None,
     risk: float | None = None,
     fractional: bool = False,
+    more_signals: bool = False,
 ) -> dict[str, Any]:
     """Détail complet d'un instrument : chandelier + indicateurs + proposition.
 
@@ -317,9 +325,10 @@ def instrument_detail(
         sentiment = score_news(news_items).score
 
     mtf = _mtf_bias(symbol)
-    signal = evaluate_row(last, sentiment, mtf)
+    signal = evaluate_row(last, sentiment, mtf, loose=more_signals)
     base = analyze_symbol(
-        symbol, use_news=use_news, capital=capital, risk=risk, fractional=fractional
+        symbol, use_news=use_news, capital=capital, risk=risk,
+        fractional=fractional, more_signals=more_signals,
     )
     price, change_pct, is_live = _live_price(symbol, df)
 

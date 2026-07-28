@@ -10,9 +10,10 @@ export interface UserSettings {
   capital: number | null; // null => on utilise la valeur par défaut du serveur
   risk: number | null; // fraction (0.01 = 1 %)
   fractional: boolean; // le broker permet les actions fractionnées (petits budgets)
+  moreSignals: boolean; // mode « plus de signaux » (seuils assouplis, moins fiable)
 }
 
-const EMPTY: UserSettings = { capital: null, risk: null, fractional: false };
+const EMPTY: UserSettings = { capital: null, risk: null, fractional: false, moreSignals: false };
 
 export function loadUserSettings(): UserSettings {
   try {
@@ -23,6 +24,7 @@ export function loadUserSettings(): UserSettings {
       capital: typeof v.capital === "number" && v.capital > 0 ? v.capital : null,
       risk: typeof v.risk === "number" && v.risk > 0 && v.risk <= 0.1 ? v.risk : null,
       fractional: v.fractional === true,
+      moreSignals: v.moreSignals === true,
     };
   } catch {
     return { ...EMPTY };

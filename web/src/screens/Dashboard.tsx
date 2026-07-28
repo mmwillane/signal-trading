@@ -17,8 +17,8 @@ export function Dashboard() {
   const [editing, setEditing] = useState(false);
 
   const dash = useQuery({
-    queryKey: ["dashboard", user.capital, user.risk, user.fractional],
-    queryFn: () => api.dashboard(true, user.capital, user.risk, user.fractional),
+    queryKey: ["dashboard", user.capital, user.risk, user.fractional, user.moreSignals],
+    queryFn: () => api.dashboard(true, user.capital, user.risk, user.fractional, user.moreSignals),
     refetchInterval: 30_000,           // rafraîchissement auto ~30 s (live-ish)
   });
 
@@ -78,6 +78,7 @@ export function Dashboard() {
           currentCapital={capital}
           currentRiskPct={Math.round(riskFrac * 100 * 100) / 100}
           currentFractional={user.fractional}
+          currentMoreSignals={user.moreSignals}
           currency={currency}
           onClose={() => setEditing(false)}
         />

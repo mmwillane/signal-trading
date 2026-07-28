@@ -10,18 +10,21 @@ export function SettingsSheet({
   currentCapital,
   currentRiskPct,
   currentFractional = false,
+  currentMoreSignals = false,
   currency = "USD",
   onClose,
 }: {
   currentCapital: number;
   currentRiskPct: number; // en % (ex. 1)
   currentFractional?: boolean;
+  currentMoreSignals?: boolean;
   currency?: string;
   onClose: () => void;
 }) {
   const [capital, setCapital] = useState(String(Math.round(currentCapital)));
   const [riskPct, setRiskPct] = useState(String(currentRiskPct));
   const [fractional, setFractional] = useState(currentFractional);
+  const [moreSignals, setMoreSignals] = useState(currentMoreSignals);
 
   const capNum = parseFloat(capital);
   const riskNum = parseFloat(riskPct);
@@ -32,7 +35,7 @@ export function SettingsSheet({
 
   function save() {
     if (!capValid || !riskValid) return;
-    saveUserSettings({ capital: capNum, risk: riskNum / 100, fractional });
+    saveUserSettings({ capital: capNum, risk: riskNum / 100, fractional, moreSignals });
     onClose();
   }
 
@@ -118,6 +121,31 @@ export function SettingsSheet({
               💡 Avec un budget ≤ 300, la plupart des actions coûtent plus qu'une part entière. Active « actions fractionnées » pour obtenir des propositions adaptées.
             </p>
           )}
+
+          {/* Mode « plus de signaux » — seuils assouplis */}
+          <button
+            onClick={() => setMoreSignals((v) => !v)}
+            className="press w-full rounded-2xl p-4 hairline text-left"
+            style={{ backgroundColor: moreSignals ? "rgba(245,196,81,0.08)" : "rgba(255,255,255,0.02)" }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium">Plus de signaux</div>
+                <div className="text-[11px] mt-0.5" style={{ color: "var(--color-faint)" }}>
+                  Assouplit les filtres (ADX, confluence, confiance) → plus d'opportunités, mais <strong style={{ color: "#e9c877" }}>moins fiables</strong>. Utile pour apprendre en démo.
+                </div>
+              </div>
+              <span
+                className="shrink-0 w-11 h-6 rounded-full p-0.5 transition-all duration-300"
+                style={{ backgroundColor: moreSignals ? "var(--color-amber)" : "rgba(255,255,255,0.12)" }}
+              >
+                <span
+                  className="block w-5 h-5 rounded-full bg-white transition-all duration-300"
+                  style={{ transform: moreSignals ? "translateX(20px)" : "translateX(0)" }}
+                />
+              </span>
+            </div>
+          </button>
 
           <button
             onClick={save}

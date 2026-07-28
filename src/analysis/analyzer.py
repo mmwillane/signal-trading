@@ -75,13 +75,26 @@ def trend_direction(df: pd.DataFrame) -> int:
     return 0
 
 
-def evaluate_row(row: pd.Series, sentiment_score: float = 0.0, mtf_trend: int = 0) -> Signal:
+def evaluate_row(
+    row: pd.Series,
+    sentiment_score: float = 0.0,
+    mtf_trend: int = 0,
+    loose: bool = False,
+) -> Signal:
     """Évalue une ligne de features enrichies en un Signal noté.
 
-    Portes dures (toutes requises) : données valides, ADX >= seuil, alignement
-    de tendance (SMA200), momentum court (SMA20/50), MACD, RSI non extrême.
-    Puis score de confiance >= seuil, veto de sentiment, biais multi-temporel.
+    Mode STANDARD : ADX >= 20, tendance (prix vs SMA200) + les 3 confirmations
+    (SMA20/50, MACD, RSI) toutes alignées, confiance >= 55.
+
+    Mode « plus de signaux » (loose=True) : seuils abaissés (ADX >= 15,
+    confiance >= 45) ET confluence assouplie — la tendance de fond reste
+    requise, mais 2 confirmations sur 3 suffisent. Plus d'opportunités, mais
+    moins fiables (à réserver à l'apprentissage / aux petits budgets).
     """
+    adx_min = tr.ADX_MIN_LOOSE if loose else tr.ADX_MIN
+    confidence_min = tr.CONFIDENCE_MIN_LOOSE if loose else tr.CONFIDENCE_MIN
+    # Confirmations momentum requises : 2/2 en standard, 1/2 en mode loose.
+    need_confirms = 1 if loose else 2
     close = _f(row.get("Close"))
     atr = _f(row.get("atr"))
     if close is None or atr is None or atr <= 0:
@@ -98,14 +111,16 @@ def evaluate_row(row: pd.Series, sentiment_score: float = 0.0, mtf_trend: int = 
         return Signal(None, ("indicateurs pas encore disponibles",), atr, close, adx)
 
     # --- Porte de force de tendance (ADX) : commune aux deux sens ---
-    if adx < tr.ADX_MIN:
+    if adx < adx_min:
         return Signal(
-            None, (f"marché sans tendance (ADX={adx:.0f} < {tr.ADX_MIN:.0f})",),
+            None, (f"marché sans tendance (ADX={adx:.0f} < {adx_min:.0f})",),
             atr, close, adx,
         )
 
-    up = close > trend and fast > slow and macd_hist > 0 and rsi < 70
-    down = close < trend and fast < slow and macd_hist < 0 and rsi > 30
+    # Tendance de fond (prix vs SMA200) toujours requise, RSI garde-fou
+    # anti-extrême toujours actif ; confirmations momentum = {SMA20/50, MACD}.
+    up = close > trend and rsi < 70 and sum([fast > slow, macd_hist > 0]) >= need_confirms
+    down = close < trend and rsi > 30 and sum([fast < slow, macd_hist < 0]) >= need_confirms
 
     sentiment_blocks_up = sentiment_score <= -0.35
     sentiment_blocks_down = sentiment_score >= 0.35
@@ -113,12 +128,12 @@ def evaluate_row(row: pd.Series, sentiment_score: float = 0.0, mtf_trend: int = 
     if up and not sentiment_blocks_up:
         return _score_and_build(
             "buy", close, atr, adx, rsi, macd_hist, sentiment_score, mtf_trend,
-            swing_lo, swing_hi,
+            swing_lo, swing_hi, confidence_min,
         )
     if down and not sentiment_blocks_down:
         return _score_and_build(
             "sell", close, atr, adx, rsi, macd_hist, sentiment_score, mtf_trend,
-            swing_lo, swing_hi,
+            swing_lo, swing_hi, confidence_min,
         )
 
     return Signal(None, ("pas de confluence suffisante",), atr, close, adx)
@@ -127,7 +142,7 @@ def evaluate_row(row: pd.Series, sentiment_score: float = 0.0, mtf_trend: int = 
 def _score_and_build(
     direction: str, close: float, atr: float, adx: float, rsi: float,
     macd_hist: float, sentiment: float, mtf_trend: int,
-    swing_lo: float, swing_hi: float,
+    swing_lo: float, swing_hi: float, confidence_min: int,
 ) -> Signal:
     """Calcule le score de confiance ; n'émet le signal que s'il dépasse le seuil."""
     buy = direction == "buy"
@@ -183,7 +198,7 @@ def _score_and_build(
 
     score = int(_clamp(score, 0, 100))
 
-    if score < tr.CONFIDENCE_MIN:
+    if score < confidence_min:
         return Signal(
             None, (f"setup trop faible (confiance {score}/100 < {tr.CONFIDENCE_MIN})",),
             atr, close, adx, score, swing_lo, swing_hi, mtf_label,
@@ -192,10 +207,15 @@ def _score_and_build(
     return Signal(direction, tuple(reasons), atr, close, adx, score, swing_lo, swing_hi, mtf_label)
 
 
-def evaluate_latest(df: pd.DataFrame, sentiment_score: float = 0.0, mtf_trend: int = 0) -> Signal:
+def evaluate_latest(
+    df: pd.DataFrame,
+    sentiment_score: float = 0.0,
+    mtf_trend: int = 0,
+    loose: bool = False,
+) -> Signal:
     """Évalue la dernière bougie disponible."""
     feat = compute_features(df)
-    return evaluate_row(feat.iloc[-1], sentiment_score, mtf_trend)
+    return evaluate_row(feat.iloc[-1], sentiment_score, mtf_trend, loose)
 
 
 def _f(value: object) -> float | None:

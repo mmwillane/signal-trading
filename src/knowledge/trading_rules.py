@@ -113,6 +113,10 @@ TRAIL_ATR_MULT = 2.5         # stop suiveur à 2.5 × ATR du plus haut/bas attei
 # --- Score de confiance ---
 CONFIDENCE_MIN = 55          # score minimal (0-100) pour proposer un setup
 
+# --- Mode « plus de signaux » (seuils assouplis, moins fiable) ---
+ADX_MIN_LOOSE = 15.0         # accepte des tendances plus faibles
+CONFIDENCE_MIN_LOOSE = 45    # accepte des setups moins confiants
+
 
 def rules_summary() -> str:
     """Texte lisible des principes appliqués (pour le README / affichage)."""
