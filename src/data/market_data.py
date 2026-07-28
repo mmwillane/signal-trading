@@ -12,6 +12,9 @@ Choix de la source — yfinance :
 
 from __future__ import annotations
 
+import random
+import time
+
 import pandas as pd
 
 from ..security.safe_logging import get_logger
@@ -28,11 +31,14 @@ def get_history(
     *,
     period: str = "1y",
     interval: str = "1d",
+    max_retries: int = 3,
 ) -> pd.DataFrame | None:
     """Renvoie l'historique OHLCV nettoyé, ou None si indisponible.
 
-    On valide le symbole, on capture toute erreur réseau/parse de
-    yfinance, et on assainit le DataFrame avant de le rendre.
+    Fiabilité : les données gratuites Yahoo échouent parfois de façon
+    transitoire (limitation d'IP sur un serveur cloud, réponse partielle).
+    On réessaie donc plusieurs fois avec un backoff exponentiel + jitter
+    avant d'abandonner. On valide le symbole et on assainit le résultat.
     """
     try:
         import yfinance as yf
@@ -46,20 +52,34 @@ def get_history(
         log.warning("Symbole ignoré : %s", exc)
         return None
 
-    try:
-        df = yf.download(
-            sym,
-            period=period,
-            interval=interval,
-            auto_adjust=True,
-            progress=False,
-            threads=False,
-        )
-    except Exception as exc:  # yfinance remonte des erreurs hétérogènes
-        log.warning("Échec téléchargement %s : %s", sym, type(exc).__name__)
-        return None
+    for attempt in range(max_retries):
+        try:
+            df = yf.download(
+                sym,
+                period=period,
+                interval=interval,
+                auto_adjust=True,
+                progress=False,
+                threads=False,
+            )
+        except Exception as exc:  # yfinance remonte des erreurs hétérogènes
+            log.warning(
+                "Échec téléchargement %s (tentative %d/%d) : %s",
+                sym, attempt + 1, max_retries, type(exc).__name__,
+            )
+            df = None
 
-    return _normalize(df, sym)
+        result = _normalize(df, sym) if df is not None else None
+        if result is not None:
+            return result
+
+        # Réponse vide/partielle : backoff avant la prochaine tentative.
+        if attempt < max_retries - 1:
+            delay = 0.8 * (2**attempt) + random.uniform(0, 0.5)
+            time.sleep(delay)
+
+    log.warning("Données indisponibles pour %s après %d tentatives.", sym, max_retries)
+    return None
 
 
 def _normalize(df: pd.DataFrame | None, sym: str) -> pd.DataFrame | None:
@@ -106,7 +126,9 @@ def get_quote_price(symbol: str) -> float | None:
     (marché fermé sans données intraday, etc.) — l'appelant se rabat alors
     sur la dernière clôture connue.
     """
-    df = get_history(symbol, period="1d", interval="1m")
+    # Un seul essai : en cas d'échec on se rabat sur la dernière clôture,
+    # inutile de ralentir l'endpoint de cotation avec des réessais.
+    df = get_history(symbol, period="1d", interval="1m", max_retries=1)
     if df is None or df.empty:
         return None
     return float(df["Close"].iloc[-1])
