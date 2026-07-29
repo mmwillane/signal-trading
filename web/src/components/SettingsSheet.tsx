@@ -1,7 +1,15 @@
 import { useState } from "react";
-import { X, Wallet, ShieldCheck, CurrencyCircleDollar } from "@phosphor-icons/react";
+import { X, Wallet, ShieldCheck, CurrencyCircleDollar, ChartBar } from "@phosphor-icons/react";
 import { saveUserSettings } from "../lib/userSettings";
 import { money } from "../lib/format";
+
+const TF_OPTIONS = [
+  { code: "1m", label: "1 min" },
+  { code: "5m", label: "5 min" },
+  { code: "15m", label: "15 min" },
+  { code: "1h", label: "1 h" },
+  { code: "1d", label: "Jour" },
+];
 
 const CURRENCIES = [
   { code: "USD", label: "Dollar US" },
@@ -25,6 +33,7 @@ export function SettingsSheet({
   currentFractional = false,
   currentMoreSignals = false,
   currency: currentCurrency = "USD",
+  currentTf = "1d",
   onClose,
 }: {
   currentCapital: number;
@@ -32,6 +41,7 @@ export function SettingsSheet({
   currentFractional?: boolean;
   currentMoreSignals?: boolean;
   currency?: string;
+  currentTf?: string;
   onClose: () => void;
 }) {
   const [capital, setCapital] = useState(String(Math.round(currentCapital)));
@@ -39,6 +49,7 @@ export function SettingsSheet({
   const [fractional, setFractional] = useState(currentFractional);
   const [moreSignals, setMoreSignals] = useState(currentMoreSignals);
   const [currency, setCurrency] = useState(currentCurrency);
+  const [tf, setTf] = useState(currentTf);
 
   const capNum = parseFloat(capital);
   const riskNum = parseFloat(riskPct);
@@ -49,7 +60,7 @@ export function SettingsSheet({
 
   function save() {
     if (!capValid || !riskValid) return;
-    saveUserSettings({ capital: capNum, risk: riskNum / 100, fractional, moreSignals, currency });
+    saveUserSettings({ capital: capNum, risk: riskNum / 100, fractional, moreSignals, currency, tf });
     onClose();
   }
 
@@ -75,6 +86,30 @@ export function SettingsSheet({
             <button onClick={onClose} className="press rounded-full p-2 hairline" aria-label="Fermer">
               <X size={18} weight="light" color="#9aa0ac" />
             </button>
+          </div>
+
+          <div>
+            <span className="eyebrow flex items-center gap-1.5">
+              <ChartBar size={16} weight="light" color="#34d399" /> Style de trading (unité de temps)
+            </span>
+            <div className="mt-2 flex gap-1 rounded-full p-1 hairline" style={{ backgroundColor: "rgba(255,255,255,0.02)" }}>
+              {TF_OPTIONS.map((o) => (
+                <button
+                  key={o.code}
+                  onClick={() => setTf(o.code)}
+                  className="press flex-1 rounded-full py-2 text-xs font-medium transition-all duration-300"
+                  style={{
+                    backgroundColor: tf === o.code ? "rgba(52,211,153,0.16)" : "transparent",
+                    color: tf === o.code ? "#5be0ae" : "var(--color-muted)",
+                  }}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[11px] mt-1 block" style={{ color: "var(--color-faint)" }}>
+              Détecte les setups sur cette unité de temps. Intraday = plus de signaux, réaction plus rapide. Jour = swing.
+            </span>
           </div>
 
           <label className="block">

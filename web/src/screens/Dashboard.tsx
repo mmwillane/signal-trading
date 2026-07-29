@@ -17,10 +17,13 @@ export function Dashboard() {
   const [editing, setEditing] = useState(false);
 
   const dash = useQuery({
-    queryKey: ["dashboard", user.capital, user.risk, user.fractional, user.moreSignals, user.currency],
-    queryFn: () => api.dashboard(true, user.capital, user.risk, user.fractional, user.moreSignals, user.currency),
+    queryKey: ["dashboard", user.capital, user.risk, user.fractional, user.moreSignals, user.currency, user.tf],
+    queryFn: () => api.dashboard(true, user.capital, user.risk, user.fractional, user.moreSignals, user.currency, user.tf),
     refetchInterval: 30_000,           // rafraîchissement auto ~30 s (live-ish)
   });
+
+  const TF_LABEL: Record<string, string> = { "1m": "1 min", "5m": "5 min", "15m": "15 min", "1h": "1 h", "1d": "Journalier" };
+  const tfLabel = TF_LABEL[dash.data?.timeframe ?? user.tf] ?? "Journalier";
 
   // Devise de COMPTE (capital/risque) : choix utilisateur. Les PRIX restent en USD.
   const currency = dash.data?.currency ?? user.currency ?? "USD";
@@ -54,12 +57,17 @@ export function Dashboard() {
       <Reveal delay={80}>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Eyebrow>Ton compte</Eyebrow>
+            <div className="flex items-center gap-2">
+              <Eyebrow>Ton compte</Eyebrow>
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: "rgba(52,211,153,0.12)", color: "#5be0ae" }}>
+                {tfLabel}
+              </span>
+            </div>
             <button
               onClick={() => setEditing(true)}
               className="press flex items-center gap-1.5 rounded-full px-3 py-1.5"
               style={{ backgroundColor: "rgba(52,211,153,0.12)", color: "#5be0ae" }}
-              aria-label="Régler capital, risque et devise"
+              aria-label="Régler capital, risque, devise et style"
             >
               <PencilSimple size={12} weight="bold" />
               <span className="text-[11px] font-semibold">Régler</span>
@@ -86,6 +94,7 @@ export function Dashboard() {
           currentFractional={user.fractional}
           currentMoreSignals={user.moreSignals}
           currency={currency}
+          currentTf={user.tf}
           onClose={() => setEditing(false)}
         />
       )}

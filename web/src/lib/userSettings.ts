@@ -12,13 +12,15 @@ export interface UserSettings {
   fractional: boolean; // le broker permet les actions fractionnées (petits budgets)
   moreSignals: boolean; // mode « plus de signaux » (seuils assouplis, moins fiable)
   currency: string; // devise d'affichage du capital / risque (USD par défaut)
+  tf: string; // unité de temps d'analyse / style de trading (1m/5m/15m/1h/1d)
 }
 
 const EMPTY: UserSettings = {
-  capital: null, risk: null, fractional: false, moreSignals: false, currency: "USD",
+  capital: null, risk: null, fractional: false, moreSignals: false, currency: "USD", tf: "1d",
 };
 
 const SUPPORTED = ["USD", "EUR", "GBP", "NGN", "GHS", "KES", "ZAR", "XOF", "XAF", "MAD"];
+const TIMEFRAMES = ["1m", "5m", "15m", "1h", "1d"];
 
 export function loadUserSettings(): UserSettings {
   try {
@@ -31,6 +33,7 @@ export function loadUserSettings(): UserSettings {
       fractional: v.fractional === true,
       moreSignals: v.moreSignals === true,
       currency: typeof v.currency === "string" && SUPPORTED.includes(v.currency) ? v.currency : "USD",
+      tf: typeof v.tf === "string" && TIMEFRAMES.includes(v.tf) ? v.tf : "1d",
     };
   } catch {
     return { ...EMPTY };

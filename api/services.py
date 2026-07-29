@@ -80,13 +80,45 @@ def _intraday_cached(symbol: str, interval: str = "60m", period: str = "1mo") ->
     )
 
 
-def _mtf_bias(symbol: str) -> int:
-    """Biais de tendance intraday (+1/-1/0) pour la confirmation multi-temporel."""
+# --- Unités de temps d'ANALYSE (style de trading) --------------------------
+# tf -> (intervalle yfinance, période, TTL cache secondes)
+_TF_CONFIG: dict[str, tuple[str, str, int]] = {
+    "1d": ("1d", "1y", 300),     # swing / position (journalier)
+    "1h": ("60m", "6mo", 600),   # trading horaire
+    "15m": ("15m", "1mo", 240),  # intraday
+    "5m": ("5m", "1mo", 120),    # intraday rapide
+    "1m": ("1m", "7d", 60),      # scalping (données ~7 j seulement)
+}
+
+
+def _resolve_tf(tf: str | None) -> str:
+    return tf if tf in _TF_CONFIG else "1d"
+
+
+def _tf_history(symbol: str, tf: str) -> pd.DataFrame | None:
+    """Historique à l'unité de temps demandée (cache adapté à la fréquence)."""
+    interval, period, ttl = _TF_CONFIG[tf]
+    if tf == "1d":
+        return _history_cached(symbol)
     return get_or_set(
-        f"mtf:{symbol}",
-        _MTF_TTL,
-        lambda: trend_direction(_intraday_cached(symbol)),
+        f"tfhist:{symbol}:{tf}",
+        ttl,
+        lambda: get_history(symbol, period=period, interval=interval),
     )
+
+
+def _mtf_bias(symbol: str, tf: str = "1d") -> int:
+    """Biais de tendance d'une unité de temps de CONTEXTE (+1/-1/0).
+
+    - En journalier : on confirme avec le 60 min (plus fin) = timing d'entrée.
+    - En intraday : on confirme avec le JOURNALIER (unité supérieure) = « trader
+      dans le sens de la grande tendance », principe classique du multi-temporel.
+    """
+    def _compute() -> int:
+        secondary = _intraday_cached(symbol) if tf == "1d" else _history_cached(symbol)
+        return trend_direction(secondary)
+
+    return get_or_set(f"mtf:{symbol}:{tf}", _MTF_TTL, _compute)
 
 
 def _quote_cached(symbol: str) -> float | None:
@@ -187,14 +219,20 @@ def analyze_symbol(
     fractional: bool = False,
     more_signals: bool = False,
     currency: str | None = None,
+    tf: str = "1d",
 ) -> dict[str, Any]:
     """Analyse un instrument pour la vue liste (dashboard).
 
-    Le prix (`price`) reste dans la devise de l'instrument (USD) ; les montants
-    de compte (risque, exposition) sont convertis dans la devise de l'utilisateur.
+    `tf` = unité de temps d'analyse (1m/5m/15m/1h/1d) = style de trading. Toute
+    la logique de setup s'applique aux bougies de cette unité (stop/objectif via
+    l'ATR de l'unité choisie -> naturellement plus serrés en intraday).
+
+    Le prix reste dans la devise de l'instrument (USD) ; les montants de compte
+    sont convertis dans la devise de l'utilisateur.
     """
     cap, rsk, cur, fx = _effective_risk(capital, risk, currency)
-    df = _history_cached(symbol)
+    tf = _resolve_tf(tf)
+    df = _tf_history(symbol, tf)
     if df is None or len(df) < tr.TREND_FILTER_WINDOW:
         return {
             "symbol": symbol,
@@ -206,9 +244,13 @@ def analyze_symbol(
     if use_news:
         sentiment = score_news(filter_for_symbol(_news_cached(), symbol)).score
 
-    mtf = _mtf_bias(symbol)
+    mtf = _mtf_bias(symbol, tf)
     signal = evaluate_latest(df, sentiment, mtf, loose=more_signals)
-    price, change_pct, is_live = _live_price(symbol, df)
+    if tf == "1d":
+        price, change_pct, is_live = _live_price(symbol, df)
+    else:
+        # En intraday, la dernière bougie est déjà fraîche.
+        price, change_pct, is_live = round(latest_price(df), 4), _change_pct(df), True
 
     result: dict[str, Any] = {
         "symbol": symbol,
@@ -278,14 +320,14 @@ def _proposal_dict(p, fx: float = 1.0, currency: str = "USD") -> dict[str, Any]:
 
 def _safe_analyze(
     symbol: str, *, use_news: bool, capital: float | None, risk: float | None,
-    fractional: bool, more_signals: bool, currency: str | None,
+    fractional: bool, more_signals: bool, currency: str | None, tf: str,
 ) -> dict[str, Any]:
     """Analyse un symbole en isolant toute erreur : un symbole défaillant
     ne doit jamais faire échouer l'ensemble du dashboard."""
     try:
         return analyze_symbol(
             symbol, use_news=use_news, capital=capital, risk=risk,
-            fractional=fractional, more_signals=more_signals, currency=currency,
+            fractional=fractional, more_signals=more_signals, currency=currency, tf=tf,
         )
     except Exception as exc:  # noqa: BLE001 - robustesse volontaire
         from src.security.safe_logging import get_logger
@@ -302,16 +344,20 @@ def dashboard(
     fractional: bool = False,
     more_signals: bool = False,
     currency: str | None = None,
+    tf: str = "1d",
 ) -> dict[str, Any]:
     """Analyse toute la watchlist, setups les plus confiants d'abord."""
     s = settings()
+    tf = _resolve_tf(tf)
     # Conversion pour les montants affichés ; l'analyse reçoit le capital
     # d'ORIGINE (en devise utilisateur) et convertit elle-même une seule fois.
     cap_usd, rsk, cur, fx = _effective_risk(capital, risk, currency)
+    # En intraday, les news (biais lent) sont peu pertinentes -> on les ignore.
+    use_news_eff = use_news and tf == "1d"
     items = [
         _safe_analyze(
-            sym, use_news=use_news, capital=capital, risk=risk,
-            fractional=fractional, more_signals=more_signals, currency=currency,
+            sym, use_news=use_news_eff, capital=capital, risk=risk,
+            fractional=fractional, more_signals=more_signals, currency=currency, tf=tf,
         )
         for sym in s.watchlist
     ]
@@ -322,6 +368,7 @@ def dashboard(
         "generated_for": cur,
         "currency": cur,
         "fx_rate": round(fx, 6),
+        "timeframe": tf,
         "capital": round(cap_usd * fx, 2),          # dans la devise utilisateur
         "risk_per_trade": rsk,
         "risk_amount": round(cap_usd * rsk * fx, 2),  # dans la devise utilisateur
@@ -348,45 +395,44 @@ def instrument_detail(
     symbol: str,
     *,
     use_news: bool = True,
-    timeframe: str = "daily",
+    tf: str = "1d",
     capital: float | None = None,
     risk: float | None = None,
     fractional: bool = False,
     more_signals: bool = False,
     currency: str | None = None,
 ) -> dict[str, Any]:
-    """Détail complet d'un instrument : chandelier + indicateurs + proposition.
+    """Détail complet d'un instrument à l'unité de temps `tf`.
 
-    Le graphique peut être en `daily` (6 mois) ou `intraday` (bougies 60 min),
-    mais l'ANALYSE (setup, proposition) reste calée sur le journalier : la
-    stratégie est journalière, l'intraday ne sert qu'au timing/visuel.
+    L'analyse (setup, proposition) ET le graphique utilisent la même unité de
+    temps (1m/5m/15m/1h/1d) = le style de trading choisi.
     """
-    df = _history_cached(symbol)
+    tf = _resolve_tf(tf)
+    df = _tf_history(symbol, tf)
     if df is None or len(df) < tr.TREND_FILTER_WINDOW:
         return {"symbol": symbol, "status": "insufficient_data"}
 
     feat = compute_features(df)
-
-    if timeframe == "intraday":
-        intra = _intraday_cached(symbol, interval="60m", period="1mo")
-        candles, sma20, sma50 = _chart_intraday(intra)
-    else:
-        candles, sma20, sma50 = _chart_daily(feat)
+    intraday = tf != "1d"
+    candles, sma20, sma50 = _chart_from_feat(feat, intraday)
 
     last = feat.iloc[-1]
     sentiment = 0.0
     news_items: list = []
-    if use_news:
+    if use_news and tf == "1d":  # news = biais lent, pertinent surtout en daily
         news_items = filter_for_symbol(_news_cached(), symbol)
         sentiment = score_news(news_items).score
 
-    mtf = _mtf_bias(symbol)
+    mtf = _mtf_bias(symbol, tf)
     signal = evaluate_row(last, sentiment, mtf, loose=more_signals)
     base = analyze_symbol(
-        symbol, use_news=use_news, capital=capital, risk=risk,
-        fractional=fractional, more_signals=more_signals, currency=currency,
+        symbol, use_news=(use_news and tf == "1d"), capital=capital, risk=risk,
+        fractional=fractional, more_signals=more_signals, currency=currency, tf=tf,
     )
-    price, change_pct, is_live = _live_price(symbol, df)
+    if tf == "1d":
+        price, change_pct, is_live = _live_price(symbol, df)
+    else:
+        price, change_pct, is_live = round(latest_price(df), 4), _change_pct(df), True
 
     return {
         "symbol": symbol,
@@ -394,7 +440,7 @@ def instrument_detail(
         "price": price,
         "change_pct": change_pct,
         "is_live": is_live,
-        "timeframe": timeframe,
+        "timeframe": tf,
         "currency": _resolve_currency(currency),
         "candles": candles,
         "sma20": sma20,
@@ -416,6 +462,26 @@ def instrument_detail(
         "proposal": base.get("proposal"),
         "news": [_news_dict(n) for n in news_items[:6]],
     }
+
+
+def _chart_from_feat(feat: pd.DataFrame, intraday: bool):
+    """Construit chandeliers + SMA20/50 depuis un DataFrame de features, quelle
+    que soit l'unité de temps (format d'horodatage adapté)."""
+    tail = feat.tail(200)
+    fmt = (lambda ts: ts.isoformat()) if intraday else (lambda ts: ts.strftime("%Y-%m-%d"))
+    candles = [
+        {
+            "time": fmt(ts),
+            "open": round(float(r.Open), 4),
+            "high": round(float(r.High), 4),
+            "low": round(float(r.Low), 4),
+            "close": round(float(r.Close), 4),
+        }
+        for ts, r in tail.iterrows()
+    ]
+    sma20 = [{"time": fmt(ts), "value": round(float(v), 4)} for ts, v in tail["sma_fast"].dropna().items()]
+    sma50 = [{"time": fmt(ts), "value": round(float(v), 4)} for ts, v in tail["sma_slow"].dropna().items()]
+    return candles, sma20, sma50
 
 
 def _chart_daily(feat: pd.DataFrame):

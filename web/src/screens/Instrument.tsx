@@ -17,11 +17,19 @@ const MTF_LABEL: Record<string, string> = {
   neutre: "intraday neutre",
 };
 
+const TF_CHIPS = [
+  { code: "1m", label: "1m" },
+  { code: "5m", label: "5m" },
+  { code: "15m", label: "15m" },
+  { code: "1h", label: "1h" },
+  { code: "1d", label: "Jour" },
+];
+
 export function Instrument() {
   const { symbol = "" } = useParams();
   const navigate = useNavigate();
-  const [tf, setTf] = useState<"daily" | "intraday">("daily");
   const user = useUserSettings();
+  const [tf, setTf] = useState<string>(user.tf);
   const q = useQuery({
     queryKey: ["instrument", symbol, tf, user.capital, user.risk, user.fractional, user.moreSignals, user.currency],
     queryFn: () => api.instrument(symbol, true, tf, user.capital, user.risk, user.fractional, user.moreSignals, user.currency),
@@ -85,14 +93,15 @@ export function Instrument() {
             <div className="lg:col-span-2 space-y-6">
               <Reveal delay={60}>
                 <Bezel className="p-3">
-                  <div className="flex items-center gap-2 px-1 pb-2 pt-1">
+                  <div className="flex items-center gap-2 px-1 pb-2 pt-1 flex-wrap">
                     <div className="flex gap-1 rounded-full p-1 hairline" style={{ backgroundColor: "rgba(255,255,255,0.02)" }}>
-                      <TfChip active={tf === "daily"} onClick={() => setTf("daily")}>6 mois</TfChip>
-                      <TfChip active={tf === "intraday"} onClick={() => setTf("intraday")}>Intraday</TfChip>
+                      {TF_CHIPS.map((c) => (
+                        <TfChip key={c.code} active={tf === c.code} onClick={() => setTf(c.code)}>{c.label}</TfChip>
+                      ))}
                     </div>
                     <div className="flex items-center gap-3 ml-auto text-[11px]" style={{ color: "var(--color-faint)" }}>
-                      <Legend color="#8b7cf6" label={tf === "daily" ? "SMA 20" : "EMA 20"} />
-                      <Legend color="#f5c451" label={tf === "daily" ? "SMA 50" : "EMA 50"} />
+                      <Legend color="#8b7cf6" label="SMA 20" />
+                      <Legend color="#f5c451" label="SMA 50" />
                     </div>
                   </div>
                   {q.data.candles.length > 0 ? (

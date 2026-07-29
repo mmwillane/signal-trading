@@ -69,11 +69,12 @@ def get_dashboard(
     fractional: bool = Query(default=False),
     more_signals: bool = Query(default=False),
     currency: str | None = Query(default=None),
+    tf: str = Query(default="1d"),
 ) -> dict:
     try:
         return services.dashboard(
             use_news=news, capital=capital, risk=risk,
-            fractional=fractional, more_signals=more_signals, currency=currency,
+            fractional=fractional, more_signals=more_signals, currency=currency, tf=tf,
         )
     except ConfigError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -83,16 +84,15 @@ def get_dashboard(
 def get_instrument(
     symbol: str,
     news: bool = Query(default=True),
-    timeframe: str = Query(default="daily"),
+    tf: str = Query(default="1d"),
     capital: float | None = Query(default=None),
     risk: float | None = Query(default=None),
     fractional: bool = Query(default=False),
     more_signals: bool = Query(default=False),
     currency: str | None = Query(default=None),
 ) -> dict:
-    tf = timeframe if timeframe in ("daily", "intraday") else "daily"
     data = services.instrument_detail(
-        symbol.upper(), use_news=news, timeframe=tf, capital=capital, risk=risk,
+        symbol.upper(), use_news=news, tf=tf, capital=capital, risk=risk,
         fractional=fractional, more_signals=more_signals, currency=currency,
     )
     if data.get("status") == "insufficient_data":

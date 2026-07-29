@@ -48,6 +48,7 @@ export interface Dashboard {
   generated_for: string;
   currency: string;
   fx_rate: number;
+  timeframe: string;
   capital: number;
   risk_per_trade?: number;
   risk_amount: number;
@@ -237,9 +238,10 @@ export const api = {
     risk?: number | null,
     fractional = false,
     moreSignals = false,
-    currency?: string
+    currency?: string,
+    tf = "1d"
   ) => {
-    const p = new URLSearchParams({ news: String(news) });
+    const p = new URLSearchParams({ news: String(news), tf });
     if (capital != null) p.set("capital", String(capital));
     if (risk != null) p.set("risk", String(risk));
     if (fractional) p.set("fractional", "true");
@@ -250,14 +252,14 @@ export const api = {
   instrument: (
     symbol: string,
     news = true,
-    timeframe: "daily" | "intraday" = "daily",
+    tf = "1d",
     capital?: number | null,
     risk?: number | null,
     fractional = false,
     moreSignals = false,
     currency?: string
   ) => {
-    const p = new URLSearchParams({ news: String(news), timeframe });
+    const p = new URLSearchParams({ news: String(news), tf });
     if (capital != null) p.set("capital", String(capital));
     if (risk != null) p.set("risk", String(risk));
     if (fractional) p.set("fractional", "true");
