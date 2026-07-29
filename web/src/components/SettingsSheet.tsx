@@ -66,7 +66,7 @@ export function SettingsSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4"
       style={{ background: "rgba(3,3,5,0.7)", backdropFilter: "blur(6px)" }}
       onClick={onClose}
     >
@@ -75,7 +75,7 @@ export function SettingsSheet({
         onClick={(e) => e.stopPropagation()}
         style={{ animation: "none" }}
       >
-        <div className="bezel-core p-6 space-y-6">
+        <div className="bezel-core p-5 space-y-5 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between">
             <div>
               <div className="eyebrow">Tes réglages</div>
