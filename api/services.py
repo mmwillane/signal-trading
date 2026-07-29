@@ -296,6 +296,10 @@ def analyze_symbol(
 
 
 def _proposal_dict(p, fx: float = 1.0, currency: str = "USD") -> dict[str, Any]:
+    # Forex (paires yfinance en =X) : le volume MT5 s'exprime en LOTS
+    # (1 lot = 100 000 unités de la devise de base).
+    is_forex = p.symbol.upper().endswith("=X")
+    lots = round(p.size.quantity / 100_000, 2) if is_forex else None
     return {
         "symbol": p.symbol,
         "direction": p.direction,
@@ -305,6 +309,8 @@ def _proposal_dict(p, fx: float = 1.0, currency: str = "USD") -> dict[str, Any]:
         "take_profit": p.take_profit,
         "risk_reward": p.risk_reward,
         "quantity": p.size.quantity,
+        "is_forex": is_forex,
+        "lots": lots,          # volume MT5 (lots) pour le forex, sinon null
         # Montants de compte : convertis dans la devise de l'utilisateur.
         "notional": round(p.size.notional * fx, 2),
         "risk_amount": round(p.size.risk_amount * fx, 2),

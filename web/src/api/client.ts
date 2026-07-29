@@ -9,6 +9,8 @@ export interface Proposal {
   take_profit: number;
   risk_reward: number;
   quantity: number;
+  is_forex?: boolean;
+  lots?: number | null;   // volume MT5 (lots) pour le forex
   notional: number;
   risk_amount: number;
   reasons: string[];

@@ -9,6 +9,7 @@ import { JournalButton } from "./JournalButton";
 export function ProposalCard({ p, currency = "USD" }: { p: Proposal; currency?: string }) {
   const buy = p.direction === "buy";
   const Icon = buy ? TrendUp : TrendDown;
+  const priceDec = p.is_forex ? 5 : 2;  // le forex a besoin de plus de décimales
 
   return (
     <div className="space-y-4">
@@ -49,9 +50,9 @@ export function ProposalCard({ p, currency = "USD" }: { p: Proposal; currency?: 
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <Level label="Entrée" value={num(p.entry, 2)} />
-        <Level label="Stop loss" value={num(p.stop_loss, 2)} tone="down" icon={<Shield size={13} weight="light" />} />
-        <Level label="Objectif" value={num(p.take_profit, 2)} tone="up" icon={<Target size={13} weight="light" />} />
+        <Level label="Entrée" value={num(p.entry, priceDec)} />
+        <Level label="Stop loss" value={num(p.stop_loss, priceDec)} tone="down" icon={<Shield size={13} weight="light" />} />
+        <Level label="Take Profit" value={num(p.take_profit, priceDec)} tone="up" icon={<Target size={13} weight="light" />} />
       </div>
 
       <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--color-faint)" }}>
@@ -59,7 +60,11 @@ export function ProposalCard({ p, currency = "USD" }: { p: Proposal; currency?: 
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <Level label="Quantité" value={num(p.quantity, p.quantity < 1 ? 6 : 2)} sub={`expo ${money(p.notional, currency)}`} />
+        {p.is_forex && p.lots != null ? (
+          <Level label="Volume (lots MT5)" value={num(Math.max(p.lots, 0.01), 2)} sub={`expo ${money(p.notional, currency)}`} />
+        ) : (
+          <Level label="Quantité" value={num(p.quantity, p.quantity < 1 ? 6 : 2)} sub={`expo ${money(p.notional, currency)}`} />
+        )}
         <Level label="Risque" value={money(p.risk_amount, currency)} sub="si stop touché" tone="down" />
       </div>
 
