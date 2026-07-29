@@ -1,11 +1,33 @@
 // Utilitaires de formatage (affichage seulement).
 
 export function money(v: number, currency = "USD"): string {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: v >= 1000 ? 0 : 2,
-  }).format(v);
+  try {
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: v >= 1000 ? 0 : 2,
+    }).format(v);
+  } catch {
+    return `${num(v, 0)} ${currency}`;
+  }
+}
+
+/** Montant compact pour les grands nombres (ex. 1,5 M $US) — évite les
+ *  débordements dans les tuiles étroites. */
+export function moneyCompact(v: number, currency = "USD"): string {
+  try {
+    if (Math.abs(v) >= 100_000) {
+      return new Intl.NumberFormat("fr-FR", {
+        style: "currency",
+        currency,
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(v);
+    }
+    return money(v, currency);
+  } catch {
+    return `${num(v, 0)} ${currency}`;
+  }
 }
 
 export function num(v: number, digits = 2): string {

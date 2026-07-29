@@ -1,7 +1,20 @@
 import { useState } from "react";
-import { X, Wallet, ShieldCheck } from "@phosphor-icons/react";
+import { X, Wallet, ShieldCheck, CurrencyCircleDollar } from "@phosphor-icons/react";
 import { saveUserSettings } from "../lib/userSettings";
 import { money } from "../lib/format";
+
+const CURRENCIES = [
+  { code: "USD", label: "Dollar US" },
+  { code: "EUR", label: "Euro" },
+  { code: "GBP", label: "Livre sterling" },
+  { code: "XOF", label: "Franc CFA (Ouest)" },
+  { code: "XAF", label: "Franc CFA (Centre)" },
+  { code: "NGN", label: "Naira (Nigeria)" },
+  { code: "GHS", label: "Cedi (Ghana)" },
+  { code: "KES", label: "Shilling (Kenya)" },
+  { code: "ZAR", label: "Rand (Afrique du Sud)" },
+  { code: "MAD", label: "Dirham (Maroc)" },
+];
 
 // Feuille de réglages : l'utilisateur saisit SON capital et SON risque par
 // trade. Stocké localement (par navigateur), pris en compte par l'API pour
@@ -11,7 +24,7 @@ export function SettingsSheet({
   currentRiskPct,
   currentFractional = false,
   currentMoreSignals = false,
-  currency = "USD",
+  currency: currentCurrency = "USD",
   onClose,
 }: {
   currentCapital: number;
@@ -25,6 +38,7 @@ export function SettingsSheet({
   const [riskPct, setRiskPct] = useState(String(currentRiskPct));
   const [fractional, setFractional] = useState(currentFractional);
   const [moreSignals, setMoreSignals] = useState(currentMoreSignals);
+  const [currency, setCurrency] = useState(currentCurrency);
 
   const capNum = parseFloat(capital);
   const riskNum = parseFloat(riskPct);
@@ -35,7 +49,7 @@ export function SettingsSheet({
 
   function save() {
     if (!capValid || !riskValid) return;
-    saveUserSettings({ capital: capNum, risk: riskNum / 100, fractional, moreSignals });
+    saveUserSettings({ capital: capNum, risk: riskNum / 100, fractional, moreSignals, currency });
     onClose();
   }
 
@@ -62,6 +76,26 @@ export function SettingsSheet({
               <X size={18} weight="light" color="#9aa0ac" />
             </button>
           </div>
+
+          <label className="block">
+            <span className="eyebrow flex items-center gap-1.5">
+              <CurrencyCircleDollar size={16} weight="light" color="#8b7cf6" /> Devise
+            </span>
+            <div className="mt-2 rounded-2xl px-4 py-3 hairline" style={{ backgroundColor: "rgba(255,255,255,0.02)" }}>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="w-full bg-transparent outline-none text-sm"
+                style={{ color: "var(--color-text)" }}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code} style={{ backgroundColor: "#101218" }}>
+                    {c.code} — {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </label>
 
           <Field
             icon={<Wallet size={16} weight="light" color="#34d399" />}

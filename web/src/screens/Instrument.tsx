@@ -22,13 +22,13 @@ export function Instrument() {
   const navigate = useNavigate();
   const [tf, setTf] = useState<"daily" | "intraday">("daily");
   const user = useUserSettings();
-  const settings = useQuery({ queryKey: ["settings"], queryFn: () => api.settings() });
   const q = useQuery({
-    queryKey: ["instrument", symbol, tf, user.capital, user.risk, user.fractional, user.moreSignals],
-    queryFn: () => api.instrument(symbol, true, tf, user.capital, user.risk, user.fractional, user.moreSignals),
+    queryKey: ["instrument", symbol, tf, user.capital, user.risk, user.fractional, user.moreSignals, user.currency],
+    queryFn: () => api.instrument(symbol, true, tf, user.capital, user.risk, user.fractional, user.moreSignals, user.currency),
     refetchInterval: 30_000,
   });
-  const currency = settings.data?.base_currency ?? "USD";
+  // Devise de compte (proposition) ; les prix restent en USD.
+  const currency = q.data?.currency ?? user.currency ?? "USD";
 
   return (
     <div className="space-y-6">
@@ -62,7 +62,7 @@ export function Instrument() {
                   <LiveBadge live={q.data.is_live} />
                 </div>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-xl tabular-nums">{money(q.data.price, currency)}</span>
+                  <span className="text-xl tabular-nums">{money(q.data.price, "USD")}</span>
                   <span
                     className="text-sm font-semibold tabular-nums"
                     style={{ color: changeTone(q.data.change_pct) === "up" ? "#5be0ae" : changeTone(q.data.change_pct) === "down" ? "#ff8497" : "#f5c451" }}

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { CaretRight, Sparkle, ShieldCheck, PencilSimple } from "@phosphor-icons/react";
 import { api, type DashboardItem } from "../api/client";
-import { money, pct, changeTone, num } from "../lib/format";
+import { money, moneyCompact, pct, changeTone, num } from "../lib/format";
 import { Reveal } from "../components/Reveal";
 import { Bezel, Pill, Eyebrow, ConfidenceRing, LiveBadge } from "../components/ui";
 import { Sparkline } from "../components/Sparkline";
@@ -17,12 +17,13 @@ export function Dashboard() {
   const [editing, setEditing] = useState(false);
 
   const dash = useQuery({
-    queryKey: ["dashboard", user.capital, user.risk, user.fractional, user.moreSignals],
-    queryFn: () => api.dashboard(true, user.capital, user.risk, user.fractional, user.moreSignals),
+    queryKey: ["dashboard", user.capital, user.risk, user.fractional, user.moreSignals, user.currency],
+    queryFn: () => api.dashboard(true, user.capital, user.risk, user.fractional, user.moreSignals, user.currency),
     refetchInterval: 30_000,           // rafraîchissement auto ~30 s (live-ish)
   });
 
-  const currency = settings.data?.base_currency ?? "USD";
+  // Devise de COMPTE (capital/risque) : choix utilisateur. Les PRIX restent en USD.
+  const currency = dash.data?.currency ?? user.currency ?? "USD";
   const anyLive = dash.data?.items.some((i) => i.is_live) ?? false;
 
   // Valeurs effectives affichées (réponse serveur = déjà l'override utilisateur).
@@ -49,28 +50,33 @@ export function Dashboard() {
         </div>
       </Reveal>
 
-      {/* Bandeau capital / risque / setups — cliquable pour régler */}
+      {/* Bandeau capital / risque / setups */}
       <Reveal delay={80}>
-        <Bezel className="p-1.5">
-          <div className="relative grid grid-cols-3 divide-x" style={{ borderColor: "var(--color-line)" }}>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Eyebrow>Ton compte</Eyebrow>
             <button
               onClick={() => setEditing(true)}
-              className="press absolute -top-0.5 right-1.5 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 mt-1.5"
+              className="press flex items-center gap-1.5 rounded-full px-3 py-1.5"
               style={{ backgroundColor: "rgba(52,211,153,0.12)", color: "#5be0ae" }}
-              aria-label="Régler capital et risque"
+              aria-label="Régler capital, risque et devise"
             >
-              <PencilSimple size={11} weight="bold" />
-              <span className="text-[10px] font-semibold">Régler</span>
+              <PencilSimple size={12} weight="bold" />
+              <span className="text-[11px] font-semibold">Régler</span>
             </button>
-            <Metric label="Capital" value={capital != null ? money(capital, currency) : "—"} />
-            <Metric
-              label="Risque / trade"
-              value={riskFrac != null ? `${num(riskFrac * 100, 0)}%` : "—"}
-              sub={riskAmount != null ? money(riskAmount, currency) : ""}
-            />
-            <Metric label="Setups" value={dash.data ? String(dash.data.n_setups) : "—"} accent />
           </div>
-        </Bezel>
+          <Bezel className="p-1.5">
+            <div className="grid grid-cols-3 divide-x" style={{ borderColor: "var(--color-line)" }}>
+              <Metric label="Capital" value={capital != null ? moneyCompact(capital, currency) : "—"} />
+              <Metric
+                label="Risque / trade"
+                value={riskFrac != null ? `${num(riskFrac * 100, 0)}%` : "—"}
+                sub={riskAmount != null ? moneyCompact(riskAmount, currency) : ""}
+              />
+              <Metric label="Setups" value={dash.data ? String(dash.data.n_setups) : "—"} accent />
+            </div>
+          </Bezel>
+        </div>
       </Reveal>
 
       {editing && capital != null && riskFrac != null && (
@@ -110,7 +116,7 @@ export function Dashboard() {
           <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
             {dash.data.items.map((item, i) => (
               <Reveal key={item.symbol} delay={i * 60}>
-                <InstrumentRow item={item} currency={currency} />
+                <InstrumentRow item={item} />
               </Reveal>
             ))}
           </div>
@@ -145,7 +151,7 @@ function Metric({ label, value, sub, accent }: { label: string; value: string; s
   );
 }
 
-function InstrumentRow({ item, currency }: { item: DashboardItem; currency: string }) {
+function InstrumentRow({ item }: { item: DashboardItem }) {
   if (item.status !== "ok") {
     return (
       <Bezel className="p-4">
@@ -175,7 +181,7 @@ function InstrumentRow({ item, currency }: { item: DashboardItem; currency: stri
             </div>
             <div className="mt-1 flex items-baseline gap-2">
               <span className="text-[15px] tabular-nums" style={{ color: "var(--color-muted)" }}>
-                {money(item.price ?? 0, currency)}
+                {money(item.price ?? 0, "USD")}
               </span>
               <span
                 className="text-xs font-semibold tabular-nums"

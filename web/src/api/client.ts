@@ -17,6 +17,7 @@ export interface Proposal {
   adx: number;
   stop_basis: string;
   trailing_rule: string;
+  currency?: string;   // devise des montants de compte (risque, exposition)
 }
 
 export interface DashboardItem {
@@ -45,6 +46,8 @@ export interface Quote {
 
 export interface Dashboard {
   generated_for: string;
+  currency: string;
+  fx_rate: number;
   capital: number;
   risk_per_trade?: number;
   risk_amount: number;
@@ -95,6 +98,7 @@ export interface InstrumentDetail {
   change_pct: number;
   is_live: boolean;
   timeframe: string;
+  currency: string;
   candles: Candle[];
   sma20: LinePoint[];
   sma50: LinePoint[];
@@ -232,13 +236,15 @@ export const api = {
     capital?: number | null,
     risk?: number | null,
     fractional = false,
-    moreSignals = false
+    moreSignals = false,
+    currency?: string
   ) => {
     const p = new URLSearchParams({ news: String(news) });
     if (capital != null) p.set("capital", String(capital));
     if (risk != null) p.set("risk", String(risk));
     if (fractional) p.set("fractional", "true");
     if (moreSignals) p.set("more_signals", "true");
+    if (currency) p.set("currency", currency);
     return get<Dashboard>(`/api/dashboard?${p.toString()}`);
   },
   instrument: (
@@ -248,13 +254,15 @@ export const api = {
     capital?: number | null,
     risk?: number | null,
     fractional = false,
-    moreSignals = false
+    moreSignals = false,
+    currency?: string
   ) => {
     const p = new URLSearchParams({ news: String(news), timeframe });
     if (capital != null) p.set("capital", String(capital));
     if (risk != null) p.set("risk", String(risk));
     if (fractional) p.set("fractional", "true");
     if (moreSignals) p.set("more_signals", "true");
+    if (currency) p.set("currency", currency);
     return get<InstrumentDetail>(`/api/instrument/${encodeURIComponent(symbol)}?${p.toString()}`);
   },
   news: () => get<NewsFeed>("/api/news"),

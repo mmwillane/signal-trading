@@ -122,18 +122,60 @@ def _spark(df: pd.DataFrame, n: int = 40) -> list[float]:
 
 
 # --------------------------------------------------------------------------
-def _effective_risk(capital: float | None, risk: float | None) -> tuple[float, float]:
-    """Résout le capital et le risque à utiliser : valeurs fournies par
-    l'utilisateur (validées) sinon valeurs par défaut du serveur (.env).
+# Devises supportées à l'affichage. Le capital est saisi dans cette devise ;
+# on le convertit en USD pour dimensionner (les instruments sont cotés en USD).
+_SUPPORTED_CURRENCIES = {
+    "USD", "EUR", "GBP", "NGN", "GHS", "KES", "ZAR", "XOF", "XAF", "MAD",
+}
+_FX_TTL = 3600  # taux de change mis en cache 1 h
 
-    On ne fait JAMAIS confiance au client : capital > 0 et risque dans ]0, 0.1].
+
+def _fx_rate(currency: str) -> float:
+    """Taux « combien de devise locale pour 1 USD ». USD -> 1.0.
+
+    Repli sur 1.0 (comme si USD) si le taux est indisponible, pour ne jamais
+    planter le calcul.
+    """
+    currency = (currency or "USD").upper()
+    if currency == "USD":
+        return 1.0
+
+    def _fetch() -> float:
+        from src.data.market_data import get_history
+
+        df = get_history(f"USD{currency}=X", period="5d", interval="1d", max_retries=2)
+        if df is None or df.empty:
+            return 1.0
+        rate = float(df["Close"].iloc[-1])
+        return rate if rate > 0 else 1.0
+
+    return get_or_set(f"fx:{currency}", _FX_TTL, _fetch)
+
+
+def _resolve_currency(currency: str | None) -> str:
+    c = (currency or "USD").upper()
+    return c if c in _SUPPORTED_CURRENCIES else "USD"
+
+
+def _effective_risk(
+    capital: float | None, risk: float | None, currency: str | None = None
+) -> tuple[float, float, str, float]:
+    """Résout (capital_en_USD, risque, devise, taux_fx).
+
+    Le capital fourni est exprimé dans la devise de l'utilisateur : on le
+    convertit en USD pour le dimensionnement. On ne fait JAMAIS confiance au
+    client : capital > 0, risque dans ]0, 0.1].
     """
     s = settings()
-    cap = capital if (capital is not None and capital > 0) else s.capital
+    cur = _resolve_currency(currency)
+    fx = _fx_rate(cur)  # devise locale par USD
+
+    cap_local = capital if (capital is not None and capital > 0) else s.capital * fx
     rsk = risk if (risk is not None and 0 < risk <= 0.1) else s.risk_per_trade
-    # Borne dure de sécurité même si des valeurs aberrantes passaient.
-    cap = min(max(cap, 1.0), 1_000_000_000.0)
-    return cap, rsk
+
+    cap_usd = cap_local / fx if fx > 0 else cap_local
+    cap_usd = min(max(cap_usd, 1.0), 1_000_000_000.0)
+    return cap_usd, rsk, cur, fx
 
 
 def analyze_symbol(
@@ -144,9 +186,14 @@ def analyze_symbol(
     risk: float | None = None,
     fractional: bool = False,
     more_signals: bool = False,
+    currency: str | None = None,
 ) -> dict[str, Any]:
-    """Analyse un instrument pour la vue liste (dashboard)."""
-    cap, rsk = _effective_risk(capital, risk)
+    """Analyse un instrument pour la vue liste (dashboard).
+
+    Le prix (`price`) reste dans la devise de l'instrument (USD) ; les montants
+    de compte (risque, exposition) sont convertis dans la devise de l'utilisateur.
+    """
+    cap, rsk, cur, fx = _effective_risk(capital, risk, currency)
     df = _history_cached(symbol)
     if df is None or len(df) < tr.TREND_FILTER_WINDOW:
         return {
@@ -191,7 +238,7 @@ def analyze_symbol(
             allow_fractional=allow_frac,
         )
         if proposal is not None:
-            result["proposal"] = _proposal_dict(proposal)
+            result["proposal"] = _proposal_dict(proposal, fx, cur)
         else:
             # En pratique, avec un setup valide, l'échec vient du budget :
             # 1 action entière dépasse le capital / le risque autorisé.
@@ -206,17 +253,20 @@ def analyze_symbol(
     return result
 
 
-def _proposal_dict(p) -> dict[str, Any]:
+def _proposal_dict(p, fx: float = 1.0, currency: str = "USD") -> dict[str, Any]:
     return {
         "symbol": p.symbol,
         "direction": p.direction,
+        # Prix : dans la devise de l'instrument (USD).
         "entry": p.entry,
         "stop_loss": p.stop_loss,
         "take_profit": p.take_profit,
         "risk_reward": p.risk_reward,
         "quantity": p.size.quantity,
-        "notional": p.size.notional,
-        "risk_amount": p.size.risk_amount,
+        # Montants de compte : convertis dans la devise de l'utilisateur.
+        "notional": round(p.size.notional * fx, 2),
+        "risk_amount": round(p.size.risk_amount * fx, 2),
+        "currency": currency,
         "reasons": list(p.reasons),
         "sentiment": p.sentiment,
         "confidence": p.confidence,
@@ -228,14 +278,14 @@ def _proposal_dict(p) -> dict[str, Any]:
 
 def _safe_analyze(
     symbol: str, *, use_news: bool, capital: float | None, risk: float | None,
-    fractional: bool, more_signals: bool,
+    fractional: bool, more_signals: bool, currency: str | None,
 ) -> dict[str, Any]:
     """Analyse un symbole en isolant toute erreur : un symbole défaillant
     ne doit jamais faire échouer l'ensemble du dashboard."""
     try:
         return analyze_symbol(
             symbol, use_news=use_news, capital=capital, risk=risk,
-            fractional=fractional, more_signals=more_signals,
+            fractional=fractional, more_signals=more_signals, currency=currency,
         )
     except Exception as exc:  # noqa: BLE001 - robustesse volontaire
         from src.security.safe_logging import get_logger
@@ -251,14 +301,17 @@ def dashboard(
     risk: float | None = None,
     fractional: bool = False,
     more_signals: bool = False,
+    currency: str | None = None,
 ) -> dict[str, Any]:
     """Analyse toute la watchlist, setups les plus confiants d'abord."""
     s = settings()
-    cap, rsk = _effective_risk(capital, risk)
+    # Conversion pour les montants affichés ; l'analyse reçoit le capital
+    # d'ORIGINE (en devise utilisateur) et convertit elle-même une seule fois.
+    cap_usd, rsk, cur, fx = _effective_risk(capital, risk, currency)
     items = [
         _safe_analyze(
-            sym, use_news=use_news, capital=cap, risk=rsk,
-            fractional=fractional, more_signals=more_signals,
+            sym, use_news=use_news, capital=capital, risk=risk,
+            fractional=fractional, more_signals=more_signals, currency=currency,
         )
         for sym in s.watchlist
     ]
@@ -266,10 +319,12 @@ def dashboard(
     items.sort(key=lambda i: (i.get("has_setup", False), i.get("confidence", 0)), reverse=True)
     setups = [i for i in items if i.get("has_setup")]
     return {
-        "generated_for": s.base_currency,
-        "capital": cap,
+        "generated_for": cur,
+        "currency": cur,
+        "fx_rate": round(fx, 6),
+        "capital": round(cap_usd * fx, 2),          # dans la devise utilisateur
         "risk_per_trade": rsk,
-        "risk_amount": round(cap * rsk, 2),
+        "risk_amount": round(cap_usd * rsk * fx, 2),  # dans la devise utilisateur
         "n_setups": len(setups),
         "items": items,
     }
@@ -298,6 +353,7 @@ def instrument_detail(
     risk: float | None = None,
     fractional: bool = False,
     more_signals: bool = False,
+    currency: str | None = None,
 ) -> dict[str, Any]:
     """Détail complet d'un instrument : chandelier + indicateurs + proposition.
 
@@ -328,7 +384,7 @@ def instrument_detail(
     signal = evaluate_row(last, sentiment, mtf, loose=more_signals)
     base = analyze_symbol(
         symbol, use_news=use_news, capital=capital, risk=risk,
-        fractional=fractional, more_signals=more_signals,
+        fractional=fractional, more_signals=more_signals, currency=currency,
     )
     price, change_pct, is_live = _live_price(symbol, df)
 
@@ -339,6 +395,7 @@ def instrument_detail(
         "change_pct": change_pct,
         "is_live": is_live,
         "timeframe": timeframe,
+        "currency": _resolve_currency(currency),
         "candles": candles,
         "sma20": sma20,
         "sma50": sma50,

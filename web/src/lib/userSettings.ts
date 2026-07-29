@@ -11,9 +11,14 @@ export interface UserSettings {
   risk: number | null; // fraction (0.01 = 1 %)
   fractional: boolean; // le broker permet les actions fractionnées (petits budgets)
   moreSignals: boolean; // mode « plus de signaux » (seuils assouplis, moins fiable)
+  currency: string; // devise d'affichage du capital / risque (USD par défaut)
 }
 
-const EMPTY: UserSettings = { capital: null, risk: null, fractional: false, moreSignals: false };
+const EMPTY: UserSettings = {
+  capital: null, risk: null, fractional: false, moreSignals: false, currency: "USD",
+};
+
+const SUPPORTED = ["USD", "EUR", "GBP", "NGN", "GHS", "KES", "ZAR", "XOF", "XAF", "MAD"];
 
 export function loadUserSettings(): UserSettings {
   try {
@@ -25,6 +30,7 @@ export function loadUserSettings(): UserSettings {
       risk: typeof v.risk === "number" && v.risk > 0 && v.risk <= 0.1 ? v.risk : null,
       fractional: v.fractional === true,
       moreSignals: v.moreSignals === true,
+      currency: typeof v.currency === "string" && SUPPORTED.includes(v.currency) ? v.currency : "USD",
     };
   } catch {
     return { ...EMPTY };
