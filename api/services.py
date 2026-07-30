@@ -300,13 +300,28 @@ def _proposal_dict(p, fx: float = 1.0, currency: str = "USD") -> dict[str, Any]:
     # (1 lot = 100 000 unités de la devise de base).
     is_forex = p.symbol.upper().endswith("=X")
     lots = round(p.size.quantity / 100_000, 2) if is_forex else None
+
+    # DISTANCES (robustes à l'écart de prix entre l'app et le broker) : on
+    # entre AU MARCHÉ et on applique ces distances depuis le prix réel du broker.
+    stop_dist = abs(p.entry - p.stop_loss)
+    tp_dist = abs(p.take_profit - p.entry)
+    stop_pct = round(stop_dist / p.entry * 100, 2) if p.entry else 0.0
+    tp_pct = round(tp_dist / p.entry * 100, 2) if p.entry else 0.0
+    stop_pips = round(stop_dist / 0.0001) if is_forex else None
+    tp_pips = round(tp_dist / 0.0001) if is_forex else None
+
     return {
         "symbol": p.symbol,
         "direction": p.direction,
-        # Prix : dans la devise de l'instrument (USD).
+        # Prix INDICATIFS (données différées) — dans la devise de l'instrument (USD).
         "entry": p.entry,
         "stop_loss": p.stop_loss,
         "take_profit": p.take_profit,
+        # Distances à appliquer depuis le prix réel du broker (entrée au marché).
+        "stop_pct": stop_pct,
+        "tp_pct": tp_pct,
+        "stop_pips": stop_pips,
+        "tp_pips": tp_pips,
         "risk_reward": p.risk_reward,
         "quantity": p.size.quantity,
         "is_forex": is_forex,

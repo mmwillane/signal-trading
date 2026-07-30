@@ -7,6 +7,10 @@ export interface Proposal {
   entry: number;
   stop_loss: number;
   take_profit: number;
+  stop_pct?: number;
+  tp_pct?: number;
+  stop_pips?: number | null;
+  tp_pips?: number | null;
   risk_reward: number;
   quantity: number;
   is_forex?: boolean;

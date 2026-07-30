@@ -1,8 +1,16 @@
-import { TrendUp, TrendDown, Warning, Target, Shield, Pulse, ArrowsClockwise } from "@phosphor-icons/react";
+import { TrendUp, TrendDown, Warning, Target, Shield, Pulse, ArrowsClockwise, Info } from "@phosphor-icons/react";
 import type { Proposal } from "../api/client";
 import { money, num } from "../lib/format";
 import { Pill, ConfidenceBar } from "./ui";
 import { JournalButton } from "./JournalButton";
+
+/** Distance stop/TP à appliquer depuis le prix d'entrée réel du broker. */
+function distLabel(pct?: number, pips?: number | null): string {
+  const parts: string[] = [];
+  if (pct != null) parts.push(`${num(pct, 2)}%`);
+  if (pips != null) parts.push(`${pips} pips`);
+  return parts.length ? parts.join(" · ") : "—";
+}
 
 // Affiche une proposition d'ordre complète. Toujours accompagnée de
 // l'avertissement : à valider et exécuter MANUELLEMENT.
@@ -50,9 +58,32 @@ export function ProposalCard({ p, currency = "USD" }: { p: Proposal; currency?: 
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <Level label="Entrée" value={num(p.entry, priceDec)} />
-        <Level label="Stop loss" value={num(p.stop_loss, priceDec)} tone="down" icon={<Shield size={13} weight="light" />} />
-        <Level label="Take Profit" value={num(p.take_profit, priceDec)} tone="up" icon={<Target size={13} weight="light" />} />
+        <Level label="Entrée ~" value={num(p.entry, priceDec)} sub="au marché" />
+        <Level
+          label="Stop loss"
+          value={num(p.stop_loss, priceDec)}
+          sub={distLabel(p.stop_pct, p.stop_pips)}
+          tone="down"
+          icon={<Shield size={13} weight="light" />}
+        />
+        <Level
+          label="Take Profit"
+          value={num(p.take_profit, priceDec)}
+          sub={distLabel(p.tp_pct, p.tp_pips)}
+          tone="up"
+          icon={<Target size={13} weight="light" />}
+        />
+      </div>
+
+      {/* Prix indicatifs -> entrer au marché + appliquer les distances */}
+      <div
+        className="flex items-start gap-2 rounded-2xl p-3 text-[12px] leading-relaxed"
+        style={{ backgroundColor: "rgba(52,211,153,0.06)", color: "#9fe6c8" }}
+      >
+        <Info size={15} weight="light" className="shrink-0 mt-0.5" />
+        <span>
+          Prix <strong>indicatifs</strong> (données différées, différentes de ton broker). Entre <strong>au marché</strong> sur ta plateforme, puis place le stop à <strong>{distLabel(p.stop_pct, p.stop_pips)}</strong> et le take profit à <strong>{distLabel(p.tp_pct, p.tp_pips)}</strong> de ton prix d'entrée réel.
+        </span>
       </div>
 
       <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--color-faint)" }}>
