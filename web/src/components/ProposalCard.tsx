@@ -34,7 +34,7 @@ export function ProposalCard({ p, currency = "USD" }: { p: Proposal; currency?: 
               {p.symbol}
             </div>
             <Pill tone={buy ? "buy" : "sell"} dot>
-              {buy ? "Achat" : "Vente"}
+              {buy ? "Buy" : "Sell"}
             </Pill>
           </div>
         </div>
@@ -60,7 +60,7 @@ export function ProposalCard({ p, currency = "USD" }: { p: Proposal; currency?: 
       <div className="grid grid-cols-3 gap-2">
         <Level label="Entrée ~" value={num(p.entry, priceDec)} sub="au marché" />
         <Level
-          label="Stop loss"
+          label="Stop Loss"
           value={num(p.stop_loss, priceDec)}
           sub={distLabel(p.stop_pct, p.stop_pips)}
           tone="down"
@@ -92,9 +92,9 @@ export function ProposalCard({ p, currency = "USD" }: { p: Proposal; currency?: 
 
       <div className="grid grid-cols-2 gap-2">
         {p.is_forex && p.lots != null ? (
-          <Level label="Volume (lots MT5)" value={num(Math.max(p.lots, 0.01), 2)} sub={`expo ${money(p.notional, currency)}`} />
+          <Level label="Volume (lots)" value={num(Math.max(p.lots, 0.01), 2)} sub={`expo ${money(p.notional, currency)}`} />
         ) : (
-          <Level label="Quantité" value={num(p.quantity, p.quantity < 1 ? 6 : 2)} sub={`expo ${money(p.notional, currency)}`} />
+          <Level label="Volume" value={num(p.quantity, p.quantity < 1 ? 6 : 2)} sub={`expo ${money(p.notional, currency)}`} />
         )}
         <Level label="Risque" value={money(p.risk_amount, currency)} sub="si stop touché" tone="down" />
       </div>

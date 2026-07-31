@@ -66,7 +66,7 @@ export function JournalButton({ p }: { p: Proposal }) {
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Prix d'entrée réel" value={entry} onChange={setEntry} />
-        <Field label="Quantité" value={qty} onChange={setQty} />
+        <Field label="Volume" value={qty} onChange={setQty} />
       </div>
       <input
         value={notes}

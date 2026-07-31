@@ -184,7 +184,7 @@ function InstrumentRow({ item }: { item: DashboardItem }) {
               <span className="font-semibold text-[17px]" style={{ fontFamily: "var(--font-display)" }}>{item.symbol}</span>
               {setup && (
                 <Pill tone={item.proposal!.direction === "buy" ? "buy" : "sell"} dot>
-                  {item.proposal!.direction === "buy" ? "Achat" : "Vente"}
+                  {item.proposal!.direction === "buy" ? "Buy" : "Sell"}
                 </Pill>
               )}
             </div>

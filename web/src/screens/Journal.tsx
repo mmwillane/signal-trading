@@ -128,7 +128,7 @@ function Head({ t }: { t: JournalTrade }) {
       </div>
       <div>
         <div className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>{t.symbol}</div>
-        <div className="text-[10px]" style={{ color: "var(--color-faint)" }}>{t.opened_at} · {buy ? "achat" : "vente"}</div>
+        <div className="text-[10px]" style={{ color: "var(--color-faint)" }}>{t.opened_at} · {buy ? "Buy" : "Sell"}</div>
       </div>
     </div>
   );
