@@ -35,6 +35,12 @@ def get_or_set(key: str, ttl: float, producer: Callable[[], Any]) -> Any:
     return value
 
 
+def invalidate(key: str) -> None:
+    """Supprime une entrée du cache (p. ex. pour ne pas mémoriser un échec)."""
+    with _lock:
+        _store.pop(key, None)
+
+
 def clear() -> None:
     with _lock:
         _store.clear()

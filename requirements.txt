@@ -19,6 +19,12 @@ vaderSentiment==3.3.2
 # --- Configuration / sécurité ---
 python-dotenv==1.2.2
 
+# --- Agent analyste IA (Claude) — OPTIONNEL, import paresseux ---
+# Sans clé ANTHROPIC_API_KEY, la couche IA se désactive proprement et
+# l'application fonctionne normalement sans elle. Plancher : sorties
+# structurées (output_config.format) + modèles Opus 5 requis.
+anthropic>=0.116,<1.0
+
 # --- API web (backend du frontend web/mobile) ---
 fastapi==0.140.0
 uvicorn[standard]==0.51.0

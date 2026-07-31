@@ -75,7 +75,23 @@ export interface Settings {
   base_currency: string;
   watchlist: string[];
   asset_class: string;
+  ai_enabled: boolean;
   principles: Principle[];
+}
+
+// Appréciation IA CONSULTATIVE. `available:false` = IA désactivée / indispo.
+export interface AiAnalysis {
+  available: boolean;
+  reason?: string;
+  demo?: boolean;   // true = exemple hors-ligne (gratuit), pas une vraie analyse IA
+  model?: string;
+  verdict?: "favorable" | "prudent" | "défavorable";
+  conviction?: number;
+  drivers?: string[];
+  risks?: string[];
+  news_read?: string;
+  rationale?: string;
+  caution?: string | null;
 }
 
 export interface Candle {
@@ -272,6 +288,23 @@ export const api = {
     if (moreSignals) p.set("more_signals", "true");
     if (currency) p.set("currency", currency);
     return get<InstrumentDetail>(`/api/instrument/${encodeURIComponent(symbol)}?${p.toString()}`);
+  },
+  ai: (
+    symbol: string,
+    tf = "1d",
+    capital?: number | null,
+    risk?: number | null,
+    fractional = false,
+    moreSignals = false,
+    currency?: string
+  ) => {
+    const p = new URLSearchParams({ tf });
+    if (capital != null) p.set("capital", String(capital));
+    if (risk != null) p.set("risk", String(risk));
+    if (fractional) p.set("fractional", "true");
+    if (moreSignals) p.set("more_signals", "true");
+    if (currency) p.set("currency", currency);
+    return get<AiAnalysis>(`/api/ai/${encodeURIComponent(symbol)}?${p.toString()}`);
   },
   news: () => get<NewsFeed>("/api/news"),
   backtest: (symbol: string, period = "2y", trailing = true) =>

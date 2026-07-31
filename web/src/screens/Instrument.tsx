@@ -8,6 +8,7 @@ import { Bezel, Pill, Eyebrow, ConfidenceRing, LiveBadge } from "../components/u
 import { Reveal } from "../components/Reveal";
 import { PriceChart } from "../components/PriceChart";
 import { ProposalCard } from "../components/ProposalCard";
+import { AiPanel } from "../components/AiPanel";
 import { Skeleton, ErrorState } from "../components/Skeleton";
 import { useUserSettings } from "../lib/userSettings";
 
@@ -30,6 +31,7 @@ export function Instrument() {
   const navigate = useNavigate();
   const user = useUserSettings();
   const [tf, setTf] = useState<string>(user.tf);
+  const settings = useQuery({ queryKey: ["settings"], queryFn: () => api.settings() });
   const q = useQuery({
     queryKey: ["instrument", symbol, tf, user.capital, user.risk, user.fractional, user.moreSignals, user.currency],
     queryFn: () => api.instrument(symbol, true, tf, user.capital, user.risk, user.fractional, user.moreSignals, user.currency),
@@ -163,9 +165,9 @@ export function Instrument() {
               )}
             </div>
 
-            {/* Colonne latérale : proposition (collante sur desktop) */}
+            {/* Colonne latérale : proposition + analyse IA (collante sur desktop) */}
             <div className="lg:col-span-1">
-              <div className="lg:sticky lg:top-10">
+              <div className="lg:sticky lg:top-10 space-y-6">
                 <Reveal delay={140}>
                   <Bezel className="p-5">
                     {q.data.proposal ? (
@@ -183,6 +185,20 @@ export function Instrument() {
                     )}
                   </Bezel>
                 </Reveal>
+
+                {settings.data?.ai_enabled && (
+                  <Reveal delay={180}>
+                    <AiPanel
+                      symbol={symbol}
+                      tf={tf}
+                      capital={user.capital}
+                      risk={user.risk}
+                      fractional={user.fractional}
+                      moreSignals={user.moreSignals}
+                      currency={currency}
+                    />
+                  </Reveal>
+                )}
               </div>
             </div>
           </div>

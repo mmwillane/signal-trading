@@ -21,3 +21,17 @@ services:
         value: "AAPL,MSFT,NVDA,GOOGL,AMZN,TSLA,META,SPY,^GSPC,^NDX,GC=F,EURUSD=X,GBPUSD=X,BTC-USD,ETH-USD,XRP-USD,SOL-USD,BNB-USD"
       - key: ASSET_CLASS
         value: "stocks"
+      # Agent analyste IA (Claude) — OPTIONNEL. Laisse vide pour désactiver.
+      # Renseigne ta clé dans le tableau de bord Render (Environment), pas ici :
+      # sync:false évite de committer un secret dans le dépôt.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Modèle IA : haiku = le plus économe (~1 centime/analyse). Passe à
+      # claude-sonnet-5 ou claude-opus-5 si tu veux des lectures plus fines.
+      - key: AI_MODEL
+        value: "claude-haiku-4-5"
+      # DÉMARRE EN MODE DÉMO GRATUIT (0 $) : le panneau IA marche avec un
+      # exemple hors-ligne, sans appel payant. Quand tu veux la vraie analyse :
+      # passe AI_DEMO à "false" et renseigne ANTHROPIC_API_KEY (dashboard Render).
+      - key: AI_DEMO
+        value: "true"

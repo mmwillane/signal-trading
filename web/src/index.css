@@ -152,3 +152,6 @@ body {
   50% { opacity: 0.4; transform: scale(0.8); }
 }
 .live-dot { animation: pulse-dot 2s infinite var(--ease-spring); }
+
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+.ai-spin { animation: ai-spin 0.9s linear infinite; }

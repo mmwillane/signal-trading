@@ -100,6 +100,25 @@ def get_instrument(
     return data
 
 
+@app.get("/api/ai/{symbol}")
+def get_ai_analysis(
+    symbol: str,
+    tf: str = Query(default="1d"),
+    capital: float | None = Query(default=None),
+    risk: float | None = Query(default=None),
+    fractional: bool = Query(default=False),
+    more_signals: bool = Query(default=False),
+    currency: str | None = Query(default=None),
+) -> dict:
+    """Appréciation IA CONSULTATIVE (à la demande). N'exécute rien, ne calcule
+    aucun niveau/taille : lit l'instantané déterministe + les news et rend une
+    lecture qualitative. Renvoie {available:false, ...} si l'IA est désactivée."""
+    return services.ai_analysis(
+        symbol.upper(), tf=tf, capital=capital, risk=risk,
+        fractional=fractional, more_signals=more_signals, currency=currency,
+    )
+
+
 @app.get("/api/quotes")
 def get_quotes(symbols: str = Query(...)) -> dict:
     """Cotations live légères (rafraîchissement rapide). symbols=AAPL,MSFT,..."""

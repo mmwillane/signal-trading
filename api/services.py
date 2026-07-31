@@ -13,6 +13,7 @@ from typing import Any
 
 import pandas as pd
 
+from src.ai import analyst as ai_analyst
 from src.analysis.analyzer import (
     compute_features,
     evaluate_latest,
@@ -52,6 +53,7 @@ def settings_dict() -> dict[str, Any]:
         "base_currency": s.base_currency,
         "watchlist": list(s.watchlist),
         "asset_class": s.asset_class,
+        "ai_enabled": ai_analyst.ai_available(),
         "principles": [
             {"name": r.name, "principle": r.principle, "rationale": r.rationale}
             for r in tr.RULES
@@ -554,6 +556,81 @@ def _news_dict(n) -> dict[str, Any]:
         "url": n.url,
         "themes": list(n.macro_themes),
     }
+
+
+# --------------------------------------------------------------------------
+# Agent analyste IA (CONSULTATIF). Ne calcule aucun niveau/taille : il lit
+# l'instantané déterministe + les news et rend une appréciation qualitative.
+_AI_TTL = 1800  # 30 min : évite de re-facturer des clics répétés sur le même setup
+
+
+def ai_available() -> bool:
+    return ai_analyst.ai_available()
+
+
+def ai_analysis(
+    symbol: str,
+    *,
+    tf: str = "1d",
+    capital: float | None = None,
+    risk: float | None = None,
+    fractional: bool = False,
+    more_signals: bool = False,
+    currency: str | None = None,
+) -> dict[str, Any]:
+    """Appréciation IA d'un instrument (à la demande depuis la fiche).
+
+    Réutilise le détail déterministe (données en cache), en extrait un
+    instantané, puis interroge l'analyste IA. Le résultat « disponible » est
+    mis en cache par (symbole, tf, direction, tranche de confiance) pour ne
+    pas re-facturer des clics répétés sur un setup inchangé.
+    """
+    if not ai_analyst.ai_available():
+        return {"available": False, "reason": "no_key"}
+
+    tf = _resolve_tf(tf)
+    detail = instrument_detail(
+        symbol, use_news=True, tf=tf, capital=capital, risk=risk,
+        fractional=fractional, more_signals=more_signals, currency=currency,
+    )
+    if detail.get("status") != "ok":
+        return {"available": False, "reason": "insufficient_data"}
+
+    ind = detail.get("indicators", {})
+    trend_state = "haussière (prix > SMA200)" if detail.get("price", 0) >= ind.get("sma_trend", 0) \
+        else "baissière (prix < SMA200)"
+    ctx = {
+        "symbol": symbol,
+        "display_symbol": symbol,
+        "timeframe": tf,
+        "direction": detail.get("direction"),
+        "price": detail.get("price"),
+        "change_pct": detail.get("change_pct"),
+        "confidence": detail.get("confidence"),
+        "adx": ind.get("adx"),
+        "rsi": ind.get("rsi"),
+        "macd_hist": ind.get("macd_hist"),
+        "trend_state": trend_state,
+        "mtf": detail.get("mtf"),
+        "sentiment": detail.get("sentiment"),
+        "risk_reward": (detail.get("proposal") or {}).get("risk_reward"),
+        "reasons": detail.get("reasons", []),
+        "news": [{"source": n["source"], "title": n["title"]} for n in detail.get("news", [])],
+    }
+
+    # Signature de cache : ne re-facture pas tant que le setup n'a pas changé.
+    conf_bucket = int((detail.get("confidence") or 0) // 5)
+    cache_key = f"ai:{symbol}:{tf}:{detail.get('direction')}:{conf_bucket}"
+
+    from .cache import get_or_set
+
+    result = get_or_set(cache_key, _AI_TTL, lambda: ai_analyst.analyze(ctx))
+    # Ne pas garder en cache un échec transitoire : on ne mémorise que le succès.
+    if not result.get("available"):
+        from .cache import invalidate
+
+        invalidate(cache_key)
+    return result
 
 
 def news_feed() -> dict[str, Any]:
