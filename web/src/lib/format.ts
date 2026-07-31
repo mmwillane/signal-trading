@@ -1,5 +1,33 @@
 // Utilitaires de formatage (affichage seulement).
 
+// Correspondance symbole interne (Yahoo) -> nom affiché façon MetaTrader 5.
+// L'app continue d'utiliser le symbole Yahoo pour les données ; seul
+// l'affichage change, pour matcher ce que l'utilisateur voit sur MT5.
+// NB : les noms des actions/indices peuvent varier légèrement selon le broker.
+const MT5_NAMES: Record<string, string> = {
+  "EURUSD=X": "EURUSD",
+  "GBPUSD=X": "GBPUSD",
+  "GC=F": "XAUUSD",
+  "^GSPC": "US500",
+  "^NDX": "USTEC",
+  "BTC-USD": "BTCUSD",
+  "ETH-USD": "ETHUSD",
+  "XRP-USD": "XRPUSD",
+  "SOL-USD": "SOLUSD",
+  "BNB-USD": "BNBUSD",
+  AAPL: "#AAPL",
+  MSFT: "#MSFT",
+  NVDA: "#NVDA",
+  GOOGL: "#GOOGL",
+  AMZN: "#AMZN",
+  TSLA: "#TSLA",
+  META: "#META",
+};
+
+export function mt5Name(symbol: string): string {
+  return MT5_NAMES[symbol.toUpperCase()] ?? symbol;
+}
+
 export function money(v: number, currency = "USD"): string {
   try {
     return new Intl.NumberFormat("fr-FR", {

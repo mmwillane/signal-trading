@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Notebook, TrendUp, TrendDown, Check, Trash, X } from "@phosphor-icons/react";
 import { api, type JournalTrade } from "../api/client";
-import { num, pct, signedR } from "../lib/format";
+import { num, pct, signedR, mt5Name } from "../lib/format";
 import { Bezel, Eyebrow, Pill, SectionHeading } from "../components/ui";
 import { Reveal } from "../components/Reveal";
 import { Skeleton, ErrorState } from "../components/Skeleton";
@@ -127,7 +127,7 @@ function Head({ t }: { t: JournalTrade }) {
         <Icon size={16} weight="light" color={buy ? "#34d399" : "#fb5a72"} />
       </div>
       <div>
-        <div className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>{t.symbol}</div>
+        <div className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>{mt5Name(t.symbol)}</div>
         <div className="text-[10px]" style={{ color: "var(--color-faint)" }}>{t.opened_at} · {buy ? "Buy" : "Sell"}</div>
       </div>
     </div>

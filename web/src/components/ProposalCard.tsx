@@ -1,6 +1,6 @@
 import { TrendUp, TrendDown, Warning, Target, Shield, Pulse, ArrowsClockwise, Info } from "@phosphor-icons/react";
 import type { Proposal } from "../api/client";
-import { money, num } from "../lib/format";
+import { money, num, mt5Name } from "../lib/format";
 import { Pill, ConfidenceBar } from "./ui";
 import { JournalButton } from "./JournalButton";
 
@@ -31,7 +31,7 @@ export function ProposalCard({ p, currency = "USD" }: { p: Proposal; currency?: 
           </div>
           <div>
             <div className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)" }}>
-              {p.symbol}
+              {mt5Name(p.symbol)}
             </div>
             <Pill tone={buy ? "buy" : "sell"} dot>
               {buy ? "Buy" : "Sell"}

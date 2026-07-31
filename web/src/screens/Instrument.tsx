@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { CaretLeft, ArrowUpRight } from "@phosphor-icons/react";
 import { api } from "../api/client";
-import { money, pct, num, changeTone, sentimentLabel } from "../lib/format";
+import { money, pct, num, changeTone, sentimentLabel, mt5Name } from "../lib/format";
 import { Bezel, Pill, Eyebrow, ConfidenceRing, LiveBadge } from "../components/ui";
 import { Reveal } from "../components/Reveal";
 import { PriceChart } from "../components/PriceChart";
@@ -65,7 +65,7 @@ export function Instrument() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-4xl font-semibold tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
-                    {q.data.symbol}
+                    {mt5Name(q.data.symbol)}
                   </h1>
                   <LiveBadge live={q.data.is_live} />
                 </div>

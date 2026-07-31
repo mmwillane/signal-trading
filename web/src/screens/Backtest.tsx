@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Info } from "@phosphor-icons/react";
 import { api } from "../api/client";
-import { num, pct, signedR } from "../lib/format";
+import { num, pct, signedR, mt5Name } from "../lib/format";
 import { Bezel, Eyebrow, SectionHeading } from "../components/ui";
 import { Reveal } from "../components/Reveal";
 import { Skeleton, ErrorState } from "../components/Skeleton";
@@ -39,7 +39,7 @@ export function Backtest() {
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
             {watch.map((s) => (
-              <Chip key={s} active={active === s} onClick={() => setSymbol(s)}>{s}</Chip>
+              <Chip key={s} active={active === s} onClick={() => setSymbol(s)}>{mt5Name(s)}</Chip>
             ))}
           </div>
           <div className="flex gap-2 items-center flex-wrap">

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { CaretRight, Sparkle, ShieldCheck, PencilSimple } from "@phosphor-icons/react";
 import { api, type DashboardItem } from "../api/client";
-import { money, moneyCompact, pct, changeTone, num } from "../lib/format";
+import { money, moneyCompact, pct, changeTone, num, mt5Name } from "../lib/format";
 import { Reveal } from "../components/Reveal";
 import { Bezel, Pill, Eyebrow, ConfidenceRing, LiveBadge } from "../components/ui";
 import { Sparkline } from "../components/Sparkline";
@@ -165,7 +165,7 @@ function InstrumentRow({ item }: { item: DashboardItem }) {
     return (
       <Bezel className="p-4">
         <div className="flex items-center justify-between">
-          <span className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>{item.symbol}</span>
+          <span className="font-semibold" style={{ fontFamily: "var(--font-display)" }}>{mt5Name(item.symbol)}</span>
           <span className="text-xs" style={{ color: "var(--color-faint)" }}>Données insuffisantes</span>
         </div>
       </Bezel>
@@ -181,7 +181,7 @@ function InstrumentRow({ item }: { item: DashboardItem }) {
         <div className="flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-[17px]" style={{ fontFamily: "var(--font-display)" }}>{item.symbol}</span>
+              <span className="font-semibold text-[17px]" style={{ fontFamily: "var(--font-display)" }}>{mt5Name(item.symbol)}</span>
               {setup && (
                 <Pill tone={item.proposal!.direction === "buy" ? "buy" : "sell"} dot>
                   {item.proposal!.direction === "buy" ? "Buy" : "Sell"}
